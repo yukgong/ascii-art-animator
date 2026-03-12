@@ -3,7 +3,6 @@
  * Creates ASCII art with animated particles
  */
 
-export type ParticleCharacter = '●' | '○' | '◐' | '◑' | '◒' | '◓' | '◔' | '◕' | '⬤' | '⚬' | '⚪' | '⚫' | '✳︎' | '*' | '✿' | '❋' | '✱' | '✦' | '※' | '❊' | '◈' | '◆' | '■' | '▲' | '▼' | '◀' | '▶';
 export type BackgroundCharacter = '-' | '=' | '≡' | '∙' | '·' | '‧' | '•' | '∘' | '*' | '※' | '✱' | '■' | '#' | '@';
 
 export interface BrightnessLevel {
@@ -24,16 +23,6 @@ export const DEFAULT_BRIGHTNESS_LEVELS: BrightnessLevel[] = [
   { threshold: 255, char: '∙', name: 'Very Light' },
 ];
 
-export interface Particle {
-  id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  char: ParticleCharacter;
-  color: string;
-  size: number;
-}
 
 export interface ImagePreprocessing {
   blur: number; // 0-20: blur intensity
@@ -53,15 +42,9 @@ export interface AsciiConfig {
   height: number;
   cellSize: number;
   fontSize?: number; // Font size in pixels (if not set, defaults to cellSize * 0.8)
-  particleCount: number;
-  particleSpeed: number;
-  particleChars: ParticleCharacter[];
-  particleMorphSpeed: number; // 0-100: character morph speed (higher = more frequent changes)
-  particleFontSize?: number; // Particle-specific font size (if not set, uses fontSize or cellSize * 0.8)
   backgroundChar: BackgroundCharacter;
   backgroundColor: string;
   canvasBackgroundColor: string;
-  particleColors: string[];
   density: number; // 0-1: background pattern density
   spacing: number; // -10 to 10: additional spacing between characters (negative=tighter, positive=wider)
   animationSpeed: number; // frames per second
@@ -91,113 +74,7 @@ export interface AsciiFrame {
 }
 
 /**
- * Initialize particles with random positions and velocities
- */
-export function initializeParticles(config: AsciiConfig): Particle[] {
-  const particles: Particle[] = [];
-  // Particle movement is based on grid cells, not affected by spacing
-  const cols = Math.floor(config.width / config.cellSize);
-  const rows = Math.floor(config.height / config.cellSize);
-
-  for (let i = 0; i < config.particleCount; i++) {
-    particles.push({
-      id: i,
-      x: Math.random() * cols,
-      y: Math.random() * rows,
-      vx: (Math.random() - 0.5) * config.particleSpeed,
-      vy: (Math.random() - 0.5) * config.particleSpeed,
-      char: config.particleChars[Math.floor(Math.random() * config.particleChars.length)],
-      color: config.particleColors[Math.floor(Math.random() * config.particleColors.length)],
-      size: 1,
-    });
-  }
-
-  return particles;
-}
-
 /**
- * Update particle positions
- */
-export function updateParticles(particles: Particle[], config: AsciiConfig): Particle[] {
-  // Particle movement boundaries are based on grid cells
-  const cols = Math.floor(config.width / config.cellSize);
-  const rows = Math.floor(config.height / config.cellSize);
-
-  return particles.map((particle, index) => {
-    let newVx = particle.vx;
-    let newVy = particle.vy;
-
-    // Apply separation force to prevent clustering
-    // Check distances to other particles
-    let separationX = 0;
-    let separationY = 0;
-    const separationRadius = Math.max(cols, rows) * 0.1; // 10% of canvas size
-
-    particles.forEach((otherParticle, otherIndex) => {
-      if (index === otherIndex) return;
-
-      const dx = particle.x - otherParticle.x;
-      const dy = particle.y - otherParticle.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // If too close, push away
-      if (distance < separationRadius && distance > 0) {
-        const force = (separationRadius - distance) / separationRadius;
-        separationX += (dx / distance) * force * 0.1;
-        separationY += (dy / distance) * force * 0.1;
-      }
-    });
-
-    // Apply separation force
-    newVx += separationX;
-    newVy += separationY;
-
-    // Add slight random direction change to prevent linear movement
-    if (Math.random() < 0.05) { // 5% chance each frame
-      newVx += (Math.random() - 0.5) * config.particleSpeed * 0.3;
-      newVy += (Math.random() - 0.5) * config.particleSpeed * 0.3;
-    }
-
-    // Limit velocity to maintain consistent speed
-    const speed = Math.sqrt(newVx * newVx + newVy * newVy);
-    const maxSpeed = config.particleSpeed * 1.5;
-    if (speed > maxSpeed) {
-      newVx = (newVx / speed) * maxSpeed;
-      newVy = (newVy / speed) * maxSpeed;
-    }
-
-    // Apply velocity
-    let newX = particle.x + newVx;
-    let newY = particle.y + newVy;
-
-    // Bounce off walls
-    if (newX < 0 || newX >= cols) {
-      newVx = -newVx;
-      newX = Math.max(0, Math.min(cols - 1, newX));
-    }
-    if (newY < 0 || newY >= rows) {
-      newVy = -newVy;
-      newY = Math.max(0, Math.min(rows - 1, newY));
-    }
-
-    // Randomly change character based on morph speed
-    let newChar = particle.char;
-    const morphChance = config.particleMorphSpeed / 100 * 0.1; // Scale to 0-10% chance
-    if (Math.random() < morphChance) {
-      newChar = config.particleChars[Math.floor(Math.random() * config.particleChars.length)];
-    }
-
-    return {
-      ...particle,
-      x: newX,
-      y: newY,
-      vx: newVx,
-      vy: newVy,
-      char: newChar,
-    };
-  });
-}
-
 /**
  * Select character based on brightness level
  */
@@ -279,7 +156,7 @@ function applyDithering(
 /**
  * Generate ASCII frame from particles and background
  */
-export function generateFrame(particles: Particle[], config: AsciiConfig): AsciiFrame {
+export function generateFrame(config: AsciiConfig): AsciiFrame {
   // Calculate grid dimensions based on cellSize (pattern count stays the same)
   const cols = Math.floor(config.width / config.cellSize);
   const rows = Math.floor(config.height / config.cellSize);
@@ -373,8 +250,6 @@ export function generateFrame(particles: Particle[], config: AsciiConfig): Ascii
     }
   }
 
-  // Note: Particles are now drawn separately in AsciiCanvas for proper z-index layering
-  // This ensures particles are always rendered on top of background
 
   return { grid, colors };
 }

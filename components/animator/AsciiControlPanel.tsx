@@ -5,7 +5,6 @@ import {
   DEFAULT_BRIGHTNESS_LEVELS,
   preprocessImage,
   type AsciiConfig,
-  type ParticleCharacter,
   type BackgroundCharacter,
   type BrightnessLevel,
 } from '@/lib/animations/ascii-engine';
@@ -39,8 +38,6 @@ export default function AsciiControlPanel({
       useBrightnessMapping: config.useBrightnessMapping ?? true,
       brightnessLevels: config.brightnessLevels || DEFAULT_BRIGHTNESS_LEVELS,
       spacing: config.spacing ?? 0,
-      particleMorphSpeed: config.particleMorphSpeed ?? 50,
-      particleFontSize: config.particleFontSize,
     }),
     [config]
   );
@@ -70,7 +67,7 @@ export default function AsciiControlPanel({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `ascii-animator-settings-${Date.now()}.json`;
+    link.download = `ascii-art-settings-${Date.now()}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -173,7 +170,7 @@ export default function AsciiControlPanel({
   return (
     <div className="space-y-6 p-6 bg-white/5 rounded-lg border border-white/10 overflow-y-auto max-h-[calc(100vh-200px)]">
       <div>
-        <h2 className="text-xl font-semibold text-white font-mono mb-3">🎨 ASCII Art Animator Control</h2>
+        <h2 className="text-xl font-semibold text-white font-mono mb-3">ASCII Art Control</h2>
 
         {/* Export/Import Buttons */}
         <div className="flex gap-2">
@@ -341,50 +338,6 @@ export default function AsciiControlPanel({
           >
             Reset Transform
           </button>
-        </div>
-      )}
-
-      {/* Particle Loop Settings - only show when GIF is loaded */}
-      {safeConfig.imageFrames && safeConfig.imageFrames.length > 1 && (
-        <div className="border-t border-white/10 pt-4 space-y-4">
-          <h3 className="text-md font-semibold text-white font-mono">Particle Loop Settings</h3>
-          <p className="text-xs text-white/50">
-            GIF 반복 시 파티클 움직임 방식
-          </p>
-
-          {/* Loop Mode */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/80 font-mono">
-              Particle Movement Mode
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => updateConfig('loopMode', 'normal')}
-                className={`px-3 py-2 rounded font-mono text-xs transition-colors ${
-                  (config.loopMode ?? 'normal') === 'normal'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-white/10 text-white/60 hover:bg-white/20'
-                }`}
-              >
-                Normal
-              </button>
-              <button
-                onClick={() => updateConfig('loopMode', 'pingpong')}
-                className={`px-3 py-2 rounded font-mono text-xs transition-colors ${
-                  config.loopMode === 'pingpong'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-white/10 text-white/60 hover:bg-white/20'
-                }`}
-              >
-                Ping-pong
-              </button>
-            </div>
-            <p className="text-xs text-white/40 mt-2">
-              {config.loopMode === 'pingpong'
-                ? '↔ GIF 반복 시 파티클이 왔다갔다 (자연스러운 루프)'
-                : '→ 파티클이 계속 같은 방향으로 이동'}
-            </p>
-          </div>
         </div>
       )}
 
@@ -817,83 +770,6 @@ export default function AsciiControlPanel({
         )}
       </div>
 
-      {/* Particle Font Size */}
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-2 font-mono">
-          Particle Font Size: {safeConfig.particleFontSize ?? (safeConfig.fontSize ?? Math.round(safeConfig.cellSize * 0.8))}px
-          {!safeConfig.particleFontSize && ' (Auto)'}
-        </label>
-        <p className="text-xs text-white/50 mb-2">파티클 문자 크기 (배경보다 크게!)</p>
-        <input
-          type="range"
-          value={safeConfig.particleFontSize ?? (safeConfig.fontSize ?? Math.round(safeConfig.cellSize * 0.8))}
-          onChange={(e) => updateConfig('particleFontSize', parseInt(e.target.value))}
-          min={6}
-          max={80}
-          className="w-full"
-        />
-        {safeConfig.particleFontSize && (
-          <button
-            onClick={() => updateConfig('particleFontSize', undefined)}
-            className="mt-2 text-xs text-white/50 hover:text-white/80 font-mono"
-          >
-            Reset to Auto (same as background)
-          </button>
-        )}
-      </div>
-
-      {/* Particle Count */}
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-2 font-mono">
-          Particle Count: {safeConfig.particleCount}
-        </label>
-        <input
-          type="range"
-          value={safeConfig.particleCount}
-          onChange={(e) => updateConfig('particleCount', parseInt(e.target.value))}
-          min={0}
-          max={500}
-          step={1}
-          className="w-full"
-        />
-      </div>
-
-      {/* Particle Speed */}
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-2 font-mono">
-          Particle Speed: {safeConfig.particleSpeed.toFixed(2)}
-        </label>
-        <input
-          type="range"
-          value={safeConfig.particleSpeed * 100}
-          onChange={(e) => updateConfig('particleSpeed', parseInt(e.target.value) / 100)}
-          min={10}
-          max={1000}
-          className="w-full"
-        />
-      </div>
-
-      {/* Particle Morph Speed */}
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-2 font-mono">
-          Particle Morph Speed: {safeConfig.particleMorphSpeed ?? 50}
-        </label>
-        <p className="text-xs text-white/50 mb-2">파티클 모양 변화 속도 (0=변화없음, 1000=빠른변화)</p>
-        <input
-          type="range"
-          value={safeConfig.particleMorphSpeed ?? 50}
-          onChange={(e) => updateConfig('particleMorphSpeed', parseInt(e.target.value))}
-          min={0}
-          max={1000}
-          step={5}
-          className="w-full"
-        />
-        <div className="flex justify-between text-xs text-white/30 mt-1">
-          <span>No Change</span>
-          <span>Slow</span>
-          <span>Fast</span>
-        </div>
-      </div>
 
       {/* Animation Speed (FPS) */}
       <div>
@@ -1125,44 +1001,6 @@ export default function AsciiControlPanel({
         </div>
       )}
 
-      {/* Particle Characters */}
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-2 font-mono">
-          Particle Characters
-        </label>
-        <div className="grid grid-cols-4 gap-2">
-          {(['✳︎','*','✿','❋', '✱', '✦', '※', '❊', '◈', '◆', '●', '■', '▲', '▼', '◀', '▶'] as ParticleCharacter[]).map(
-            (char) => {
-              const isSelected = safeConfig.particleChars.includes(char);
-              return (
-                <button
-                  key={char}
-                  onClick={() => {
-                    if (isSelected) {
-                      // Remove if already selected
-                      const newChars = safeConfig.particleChars.filter((c) => c !== char);
-                      if (newChars.length > 0) {
-                        updateConfig('particleChars', newChars);
-                      }
-                    } else {
-                      // Add if not selected
-                      updateConfig('particleChars', [...safeConfig.particleChars, char]);
-                    }
-                  }}
-                  className={`p-3 rounded-md font-mono text-lg transition-colors ${
-                    isSelected
-                      ? 'bg-red-600 text-white'
-                      : 'bg-white/10 text-white/60 hover:bg-white/20'
-                  }`}
-                >
-                  {char}
-                </button>
-              );
-            }
-          )}
-        </div>
-      </div>
-
       {/* Canvas Background Color */}
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2 font-mono">
@@ -1208,51 +1046,6 @@ export default function AsciiControlPanel({
         </div>
       </div>
 
-      {/* Particle Colors */}
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-2 font-mono">
-          Particle Colors
-        </label>
-        <p className="text-xs text-white/50 mb-2">파티클의 색상 (콤마로 구분)</p>
-
-        {/* Color pickers for first 4 colors */}
-        <div className="grid grid-cols-4 gap-2 mb-2">
-          {[0, 1, 2, 3].map((index) => {
-            const color = safeConfig.particleColors[index] || '#ff0000';
-            return (
-              <div key={index} className="flex flex-col gap-1">
-                <input
-                  type="color"
-                  value={color}
-                  onChange={(e) => {
-                    const newColors = [...safeConfig.particleColors];
-                    newColors[index] = e.target.value;
-                    updateConfig('particleColors', newColors);
-                  }}
-                  className="w-full h-10 rounded-md border border-white/20 cursor-pointer"
-                />
-                <span className="text-xs text-white/40 font-mono text-center">
-                  {index + 1}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Text input for all colors */}
-        <input
-          type="text"
-          value={safeConfig.particleColors.join(', ')}
-          onChange={(e) => {
-            const colors = e.target.value.split(',').map((c) => c.trim()).filter(Boolean);
-            if (colors.length > 0) {
-              updateConfig('particleColors', colors);
-            }
-          }}
-          placeholder="#ff0000, #00ff00, #0000ff"
-          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white font-mono text-sm"
-        />
-      </div>
     </div>
   );
 }

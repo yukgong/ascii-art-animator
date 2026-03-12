@@ -20,14 +20,9 @@ export default function BugsAnimatorPage() {
     width: 800,
     height: 800,
     cellSize: 15,
-    particleCount: 20,
-    particleSpeed: 0.9,
-    particleChars: ['●', '○', '◐', '◑'],
-    particleMorphSpeed: 50,
     backgroundChar: '-',
     backgroundColor: '#666666',
     canvasBackgroundColor: '#ffffff',
-    particleColors: ['#ff0000', '#ff6600', '#ffff00', '#00ff00'],
     density: 0.3,
     spacing: 0,
     animationSpeed: 12,
@@ -468,15 +463,9 @@ interface AsciiConfig {
   height: number;
   cellSize: number;
   fontSize: number;
-  particleFontSize: number;
-  particleCount: number;
-  particleSpeed: number;
-  particleChars: string[];
-  particleMorphSpeed: number;
   backgroundChar: string;
   backgroundColor: string;
   canvasBackgroundColor: string;
-  particleColors: string[];
   density: number;
   spacing: number;
   animationSpeed: number;
@@ -786,7 +775,6 @@ export default function FlyingBugsAnimation({
 
     // Calculate font sizes explicitly (matching AsciiCanvas.tsx logic)
     const calculatedFontSize = config.fontSize ?? Math.round(config.cellSize * 0.8);
-    const calculatedBugFontSize = config.particleFontSize ?? calculatedFontSize;
 
     // Build export config with explicit values
     const exportConfig = {
@@ -794,15 +782,9 @@ export default function FlyingBugsAnimation({
       height: config.height,
       cellSize: config.cellSize,
       fontSize: calculatedFontSize,
-      particleFontSize: calculatedBugFontSize,
-      particleCount: config.particleCount,
-      particleSpeed: config.particleSpeed,
-      particleChars: config.particleChars,
-      particleMorphSpeed: config.particleMorphSpeed,
       backgroundChar: config.backgroundChar,
       backgroundColor: config.backgroundColor,
       canvasBackgroundColor: config.canvasBackgroundColor,
-      particleColors: config.particleColors,
       density: config.density,
       spacing: config.spacing,
       animationSpeed: config.animationSpeed,
@@ -1072,10 +1054,7 @@ config.json의 설정값을 props로 전달:
 \`\`\`tsx
 <FlyingBugsAnimation
   config={{
-    particleCount: 50,
-    particleSpeed: 1.2,
     fontSize: 12,
-    particleFontSize: 18,
     animationSpeed: 20,
   }}
 />
@@ -1088,7 +1067,6 @@ config.json의 설정값을 props로 전달:
 | particleCount | 벌레 개수 |
 | particleSpeed | 이동 속도 |
 | fontSize | 배경 문자 크기 |
-| particleFontSize | 벌레 문자 크기 |
 | cellSize | 그리드 셀 크기 |
 | animationSpeed | FPS |
 
@@ -1465,7 +1443,7 @@ Made with 🎨 by I Hate ASCII Art Generator
 
       // Use explicit font sizes from config
       const backgroundFontSize = config.fontSize;
-      const particleFontSize = config.particleFontSize;
+      // No longer using separate particle font size
 
       // Clear canvas
       ctx.fillStyle = config.canvasBackgroundColor || '#000000';
@@ -1490,7 +1468,7 @@ Made with 🎨 by I Hate ASCII Art Generator
       }
 
       // Draw particles on top with their own font size
-      ctx.font = particleFontSize + 'px monospace';
+      ctx.font = calculatedFontSize + 'px monospace';
       particles.forEach(particle => {
         const col = Math.floor(particle.x);
         const row = Math.floor(particle.y);
@@ -1621,12 +1599,7 @@ Made with 🎨 by I Hate ASCII Art Generator
               onClick={() =>
                 setConfig({
                   ...config,
-                  particleCount: 20,
-                  particleSpeed: 0.9,
-                  particleChars: ['●', '○', '◐', '◑'],
-                  particleMorphSpeed: 40,
                   backgroundChar: '-',
-                  particleColors: ['#ff0000', '#ff6600', '#ff9900', '#ffcc00'],
                   backgroundColor: '#333333',
                   canvasBackgroundColor: '#ffffff',
                   density: 0.3,
@@ -1659,12 +1632,7 @@ Made with 🎨 by I Hate ASCII Art Generator
               onClick={() =>
                 setConfig({
                   ...config,
-                  particleCount: 200,
-                  particleSpeed: 1.0,
-                  particleChars: ['●', '○', '◐', '◑'],
-                  particleMorphSpeed: 80,
                   backgroundChar: '∙',
-                  particleColors: ['#00ff00', '#00ffaa', '#00ffff', '#00aaff'],
                   backgroundColor: '#003300',
                   canvasBackgroundColor: '#000000',
                   density: 0.5,
@@ -1697,12 +1665,7 @@ Made with 🎨 by I Hate ASCII Art Generator
               onClick={() =>
                 setConfig({
                   ...config,
-                  particleCount: 50,
-                  particleSpeed: 0.3,
-                  particleChars: ['●', '○', '◐', '◑'],
-                  particleMorphSpeed: 20,
                   backgroundChar: '≡',
-                  particleColors: ['#ff00ff', '#ff0080', '#ffff00', '#00ffff'],
                   backgroundColor: '#663366',
                   canvasBackgroundColor: '#000000',
                   density: 0.2,

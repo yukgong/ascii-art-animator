@@ -2,12 +2,9 @@
 
 import React from 'react';
 import {
-  initializeParticles,
-  updateParticles,
   generateFrame,
   preprocessImage,
   type AsciiConfig,
-  type Particle,
 } from '@/lib/animations/ascii-engine';
 
 interface AsciiCanvasProps {
@@ -17,7 +14,6 @@ interface AsciiCanvasProps {
 
 export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const particlesRef = React.useRef<Particle[]>([]);
   const animationFrameRef = React.useRef<number | undefined>(undefined);
   const lastFrameTimeRef = React.useRef<number>(0);
   const lastGifFrameTimeRef = React.useRef<number>(0);
@@ -66,14 +62,10 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
     processedImageCacheRef.current = null;
   }, [config.imageData]);
 
-  // Initialize particles when relevant config changes
-  React.useEffect(() => {
-    particlesRef.current = initializeParticles(config);
-  }, [config.particleCount, config.particleSpeed, config.particleChars, config.particleColors, config.width, config.height, config.cellSize]);
 
   // Draw single frame (for when not animating)
   const drawFrame = React.useCallback(
-    (ctx: CanvasRenderingContext2D, cfg: AsciiConfig, particles: Particle[], gifFrameIndex?: number) => {
+    (ctx: CanvasRenderingContext2D, cfg: AsciiConfig, gifFrameIndex?: number) => {
       const cols = Math.floor(cfg.width / cfg.cellSize);
       const rows = Math.floor(cfg.height / cfg.cellSize);
 
@@ -101,7 +93,7 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
       };
 
       // Generate frame
-      const frame = generateFrame(particles, configWithProcessedImage);
+      const frame = generateFrame(configWithProcessedImage);
 
       // Clear canvas with configured background color
       ctx.fillStyle = cfg.canvasBackgroundColor || '#000000';
@@ -113,7 +105,6 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
 
       // Calculate font sizes
       const backgroundFontSize = cfg.fontSize ?? cfg.cellSize * 0.8;
-      const particleFontSize = cfg.particleFontSize ?? backgroundFontSize;
 
       // Draw background first
       ctx.font = `${backgroundFontSize}px monospace`;
@@ -134,20 +125,6 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
         }
       }
 
-      // Draw particles on top with larger font size
-      ctx.font = `${particleFontSize}px monospace`;
-      particles.forEach((particle) => {
-        const col = Math.floor(particle.x);
-        const row = Math.floor(particle.y);
-
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
-          const x = col * actualCellSize + actualCellSize / 2;
-          const y = row * actualCellSize + actualCellSize / 2;
-
-          ctx.fillStyle = particle.color;
-          ctx.fillText(particle.char, x, y);
-        }
-      });
     },
     [getProcessedImage]
   );
@@ -160,7 +137,7 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    drawFrame(ctx, config, particlesRef.current, gifFrameIndexRef.current);
+    drawFrame(ctx, config, gifFrameIndexRef.current);
   }, [config, playing, drawFrame]);
 
   // Animation loop (always runs, but only updates particles when playing)
@@ -188,31 +165,12 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
       lastFrameTimeRef.current = timestamp;
 
       // Update GIF frame if applicable (advance every animation frame, ignore GIF delay)
-      // GIF always plays in normal loop mode
-      if (currentConfig.imageFrames && currentConfig.imageFrames.length > 1) {
-        const frameCount = currentConfig.imageFrames.length;
-        const prevFrameIndex = gifFrameIndexRef.current;
-        gifFrameIndexRef.current = (gifFrameIndexRef.current + 1) % frameCount;
-
-        // When GIF loops back to start and pingpong mode is enabled, reverse particle directions
-        if (currentConfig.loopMode === 'pingpong' && gifFrameIndexRef.current === 0 && prevFrameIndex === frameCount - 1) {
-          // Reverse all particle velocities for smooth pingpong effect
-          particlesRef.current = particlesRef.current.map(particle => ({
-            ...particle,
-            vx: -particle.vx,
-            vy: -particle.vy,
-          }));
-          gifFrameDirectionRef.current = gifFrameDirectionRef.current === 1 ? -1 : 1;
-        }
-      }
-
-      // Only update particle positions when playing
-      if (playing) {
-        particlesRef.current = updateParticles(particlesRef.current, currentConfig);
+      if (currentConfig.imageFrames && currentConfig.imageFrames.length > 1 && playing) {
+        gifFrameIndexRef.current = (gifFrameIndexRef.current + 1) % currentConfig.imageFrames.length;
       }
 
       // Always draw the current frame (with GIF frame index)
-      drawFrame(ctx, currentConfig, particlesRef.current, gifFrameIndexRef.current);
+      drawFrame(ctx, currentConfig, gifFrameIndexRef.current);
 
       animationFrameRef.current = requestAnimationFrame(animate);
     };
