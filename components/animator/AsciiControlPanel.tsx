@@ -1131,7 +1131,7 @@ export default function AsciiControlPanel({
           Particle Characters
         </label>
         <div className="grid grid-cols-4 gap-2">
-          {(['●', '○', '◐', '◑', '◒', '◓', '◔', '◕', '⬤', '⚬', '⚪', '⚫'] as ParticleCharacter[]).map(
+          {(['✳︎','*','✿','❋', '✱', '✦', '※', '❊', '◈', '◆', '●', '■', '▲', '▼', '◀', '▶'] as ParticleCharacter[]).map(
             (char) => {
               const isSelected = safeConfig.particleChars.includes(char);
               return (

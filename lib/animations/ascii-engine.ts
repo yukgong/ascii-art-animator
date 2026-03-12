@@ -3,7 +3,7 @@
  * Creates ASCII art with animated particles
  */
 
-export type ParticleCharacter = '●' | '○' | '◐' | '◑' | '◒' | '◓' | '◔' | '◕' | '⬤' | '⚬' | '⚪' | '⚫';
+export type ParticleCharacter = '●' | '○' | '◐' | '◑' | '◒' | '◓' | '◔' | '◕' | '⬤' | '⚬' | '⚪' | '⚫' | '✳︎' | '*' | '✿' | '❋' | '✱' | '✦' | '※' | '❊' | '◈' | '◆' | '■' | '▲' | '▼' | '◀' | '▶';
 export type BackgroundCharacter = '-' | '=' | '≡' | '∙' | '·' | '‧' | '•' | '∘' | '*' | '※' | '✱' | '■' | '#' | '@';
 
 export interface BrightnessLevel {
