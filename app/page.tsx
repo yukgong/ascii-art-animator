@@ -179,7 +179,7 @@ export default function BugsAnimatorPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'flying-particles.png';
+      link.download = 'ascii-art.png';
       link.click();
       URL.revokeObjectURL(url);
     });
@@ -219,7 +219,7 @@ export default function BugsAnimatorPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `flying-particles-${Date.now()}.webm`;
+      link.download = `ascii-art-${Date.now()}.webm`;
       link.click();
       URL.revokeObjectURL(url);
       setIsRecording(false);
@@ -284,7 +284,7 @@ export default function BugsAnimatorPage() {
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `flying-particles-${Date.now()}.gif`;
+          link.download = `ascii-art-${Date.now()}.gif`;
           link.click();
           URL.revokeObjectURL(url);
           setIsRecording(false);
@@ -521,7 +521,6 @@ export default function FlyingBugsAnimation({
     canvas.width = config.width;
     canvas.height = config.height;
 
-    let particles: any[] = [];
     let lastTime = 0;
     let gifFrameIndex = 0;
     let imageFrames: ImageData[] | null = null;
@@ -719,7 +718,6 @@ export default function FlyingBugsAnimation({
           }
         }
 
-        particles = initializeParticles(config);
         animate(0);
       } catch {
         // Silent error handling
@@ -737,9 +735,8 @@ export default function FlyingBugsAnimation({
           (config as any).imageData = imageFrames[gifFrameIndex];
         }
 
-        particles = updateParticles(particles, config);
-        const frame = generateFrame(particles, config);
-        drawFrame(ctx!, frame, config, particles);
+        const frame = generateFrame(config);
+        drawFrame(ctx!, frame, config);
       }
 
       animationId = requestAnimationFrame(animate);
@@ -910,7 +907,6 @@ export default function FlyingBugsAnimation({
     canvas.height = config.height;
     const ctx = canvas.getContext('2d');
 
-    let particles = initializeParticles(config);
     let lastTime = 0;
     let gifFrameIndex = 0;
 
@@ -959,12 +955,9 @@ export default function FlyingBugsAnimation({
           currentImageData = staticImageData;
         }
 
-        // Update particles
-        particles = updateParticles(particles, config);
-
         // Generate and draw frame
-        const frame = generateFrameWithBrightness(particles, config, currentBrightnessMap, currentImageData);
-        drawFrame(ctx, frame, config, particles);
+        const frame = generateFrameWithBrightness(config, currentBrightnessMap, currentImageData);
+        drawFrame(ctx, frame, config);
       }
 
       requestAnimationFrame(animate);
@@ -1101,97 +1094,11 @@ Made with 🎨 by I Hate ASCII Art Generator
 
     // Generate and download ZIP
     const blob = await zip.generateAsync({ type: 'blob' });
-    saveAs(blob, `flying-particles-animation-${Date.now()}.zip`);
+    saveAs(blob, `ascii-art-animation-${Date.now()}.zip`);
   };
 
   const generateInlineEngine = () => {
     return `
-    // ============================================
-    // Bug initialization and movement
-    // ============================================
-    function initializeParticles(config) {
-      const particles = [];
-      const cols = Math.floor(config.width / config.cellSize);
-      const rows = Math.floor(config.height / config.cellSize);
-
-      for (let i = 0; i < config.particleCount; i++) {
-        particles.push({
-          id: i,
-          x: Math.random() * cols,
-          y: Math.random() * rows,
-          vx: (Math.random() - 0.5) * config.particleSpeed,
-          vy: (Math.random() - 0.5) * config.particleSpeed,
-          char: config.particleChars[Math.floor(Math.random() * config.particleChars.length)],
-          color: config.particleColors[Math.floor(Math.random() * config.particleColors.length)],
-        });
-      }
-      return particles;
-    }
-
-    function updateParticles(particles, config) {
-      const cols = Math.floor(config.width / config.cellSize);
-      const rows = Math.floor(config.height / config.cellSize);
-      const morphChance = (config.particleMorphSpeed || 50) / 100 * 0.1;
-
-      return particles.map((particle, index) => {
-        let newVx = particle.vx;
-        let newVy = particle.vy;
-
-        // Apply separation force to prevent clustering
-        let separationX = 0;
-        let separationY = 0;
-        const separationRadius = Math.max(cols, rows) * 0.1;
-
-        particles.forEach((otherParticle, otherIndex) => {
-          if (index === otherIndex) return;
-
-          const dx = particle.x - otherBug.x;
-          const dy = particle.y - otherBug.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < separationRadius && distance > 0) {
-            const force = (separationRadius - distance) / separationRadius;
-            separationX += (dx / distance) * force * 0.1;
-            separationY += (dy / distance) * force * 0.1;
-          }
-        });
-
-        newVx += separationX;
-        newVy += separationY;
-
-        if (Math.random() < 0.05) {
-          newVx += (Math.random() - 0.5) * config.particleSpeed * 0.3;
-          newVy += (Math.random() - 0.5) * config.particleSpeed * 0.3;
-        }
-
-        const speed = Math.sqrt(newVx * newVx + newVy * newVy);
-        const maxSpeed = config.particleSpeed * 1.5;
-        if (speed > maxSpeed) {
-          newVx = (newVx / speed) * maxSpeed;
-          newVy = (newVy / speed) * maxSpeed;
-        }
-
-        let newX = particle.x + newVx;
-        let newY = particle.y + newVy;
-
-        if (newX < 0 || newX >= cols) {
-          newVx = -newVx;
-          newX = Math.max(0, Math.min(cols - 1, newX));
-        }
-        if (newY < 0 || newY >= rows) {
-          newVy = -newVy;
-          newY = Math.max(0, Math.min(rows - 1, newY));
-        }
-
-        let newChar = particle.char;
-        if (Math.random() < morphChance) {
-          newChar = config.particleChars[Math.floor(Math.random() * config.particleChars.length)];
-        }
-
-        return { ...particle, x: newX, y: newY, vx: newVx, vy: newVy, char: newChar };
-      });
-    }
-
     // ============================================
     // Brightness-based character selection
     // (matches ascii-engine.ts selectCharByBrightness)
@@ -1350,7 +1257,7 @@ Made with 🎨 by I Hate ASCII Art Generator
     // (for static image: extracts brightness from imageData)
     // (matches ascii-engine.ts generateFrame)
     // ============================================
-    function generateFrameWithBrightness(particles, config, precomputedBrightnessMap, imageData) {
+    function generateFrameWithBrightness(config, precomputedBrightnessMap, imageData) {
       const cols = Math.floor(config.width / config.cellSize);
       const rows = Math.floor(config.height / config.cellSize);
       const grid = [];
@@ -1428,28 +1335,27 @@ Made with 🎨 by I Hate ASCII Art Generator
     // Legacy generateFrame wrapper for React component
     // (React component uses config.imageData)
     // ============================================
-    function generateFrame(particles, config) {
-      return generateFrameWithBrightness(particles, config, null, config.imageData);
+    function generateFrame(config) {
+      return generateFrameWithBrightness(config, null, config.imageData);
     }
 
     // ============================================
     // Draw frame to canvas
     // (matches AsciiCanvas.tsx drawFrame exactly)
     // ============================================
-    function drawFrame(ctx, frame, config, particles) {
+    function drawFrame(ctx, frame, config) {
       const cols = Math.floor(config.width / config.cellSize);
       const rows = Math.floor(config.height / config.cellSize);
       const actualCellSize = config.cellSize + (config.spacing || 0);
 
       // Use explicit font sizes from config
       const backgroundFontSize = config.fontSize;
-      // No longer using separate particle font size
 
       // Clear canvas
       ctx.fillStyle = config.canvasBackgroundColor || '#000000';
       ctx.fillRect(0, 0, config.width, config.height);
 
-      // Draw background pattern
+      // Draw ASCII art
       ctx.font = backgroundFontSize + 'px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -1466,21 +1372,6 @@ Made with 🎨 by I Hate ASCII Art Generator
           ctx.fillText(char, x, y);
         }
       }
-
-      // Draw particles on top with their own font size
-      ctx.font = calculatedFontSize + 'px monospace';
-      particles.forEach(particle => {
-        const col = Math.floor(particle.x);
-        const row = Math.floor(particle.y);
-
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
-          const x = col * actualCellSize + actualCellSize / 2;
-          const y = row * actualCellSize + actualCellSize / 2;
-
-          ctx.fillStyle = particle.color;
-          ctx.fillText(particle.char, x, y);
-        }
-      });
     }
     `;
   };
@@ -1832,8 +1723,7 @@ Made with 🎨 by I Hate ASCII Art Generator
 
         {/* Credits */}
         <div className="mt-8 text-center text-white/40 font-mono text-sm">
-          <p>Made with hate for flying particles 🎨</p>
-          <p className="mt-1">ihateflyingparticles.com</p>
+          <p>Made with ❤️ and lots of ASCII characters</p>
         </div>
       </div>
     </div>

@@ -8,7 +8,6 @@
 
 - **Image to ASCII Conversion**: Convert static images into ASCII art with customizable character mapping
 - **Animated GIF Support**: Transform GIFs into frame-by-frame ASCII animations
-- **Particle System**: Animated particles that move across the ASCII canvas
 - **Advanced Image Preprocessing**:
   - Gamma correction
   - Black/White point adjustment
@@ -43,7 +42,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 ## 🎨 Usage
 
 1. **Upload an Image or GIF**: Click "Upload Media" to select a file
-2. **Adjust Settings**: Fine-tune preprocessing, particle count, colors, and more
+2. **Adjust Settings**: Fine-tune preprocessing, character mapping, colors, and more
 3. **Play Animation**: Click play to see your ASCII art come to life
 4. **Export**: Save as PNG, GIF, WebM, or download the React component code
 
@@ -86,8 +85,7 @@ The ASCII art generation process:
 1. **Image Preprocessing**: Apply gamma, blur, grain, dithering, and color adjustments
 2. **Brightness Extraction**: Convert each pixel to brightness value (0-255)
 3. **Character Mapping**: Map brightness to ASCII characters based on threshold levels
-4. **Particle System**: Initialize and update particles with separation force and bounce physics
-5. **Rendering**: Draw background ASCII art + particles on canvas at 60 FPS
+4. **Rendering**: Draw ASCII art on canvas at 60 FPS
 
 ## 🤝 Contributing
 
