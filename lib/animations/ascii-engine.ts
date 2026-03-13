@@ -1,6 +1,6 @@
 /**
  * ASCII Animation Engine
- * Creates ASCII art with animated particles
+ * Creates ASCII art from images and GIFs
  */
 
 export type BackgroundCharacter = '-' | '=' | '≡' | '∙' | '·' | '‧' | '•' | '∘' | '*' | '※' | '✱' | '■' | '#' | '@';
@@ -154,7 +154,7 @@ function applyDithering(
 }
 
 /**
- * Generate ASCII frame from particles and background
+ * Generate ASCII frame from image data
  */
 export function generateFrame(config: AsciiConfig): AsciiFrame {
   // Calculate grid dimensions based on cellSize (pattern count stays the same)

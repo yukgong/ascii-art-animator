@@ -1057,11 +1057,11 @@ config.json의 설정값을 props로 전달:
 
 | 설정 | 설명 |
 |------|------|
-| particleCount | 벌레 개수 |
-| particleSpeed | 이동 속도 |
-| fontSize | 배경 문자 크기 |
+| fontSize | ASCII 문자 크기 |
 | cellSize | 그리드 셀 크기 |
 | animationSpeed | FPS |
+| backgroundColor | ASCII 문자 색상 |
+| backgroundChar | ASCII 문자 (기본값) |
 
 ${isUploadedGif ? `
 ## GIF 정보

@@ -140,7 +140,7 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
     drawFrame(ctx, config, gifFrameIndexRef.current);
   }, [config, playing, drawFrame]);
 
-  // Animation loop (always runs, but only updates particles when playing)
+  // Animation loop (always runs, updates GIF frames when playing)
   React.useEffect(() => {
     if (!canvasRef.current) return;
 
