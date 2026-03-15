@@ -60,6 +60,7 @@ export default function BugsAnimatorPage() {
   const [recordingType, setRecordingType] = React.useState<'gif' | 'webm'>('gif');
   const [uploadedImageBase64, setUploadedImageBase64] = React.useState<string | null>(null);
   const [isUploadedGif, setIsUploadedGif] = React.useState<boolean>(false);
+  const importInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (file: File) => {
     console.log('📤 Starting image upload:', file.name, file.type, `${(file.size / 1024 / 1024).toFixed(2)}MB`);
@@ -168,6 +169,39 @@ export default function BugsAnimatorPage() {
       console.error('❌ Critical error during upload:', error);
       alert(`이미지 로드 실패:\n${error instanceof Error ? error.message : '알 수 없는 오류'}\n\n콘솔을 확인하세요.`);
     }
+  };
+
+  // Export settings to JSON file
+  const handleExportSettings = () => {
+    const { imageData, imageFrames, gifFrameDelay, ...exportConfig } = config;
+    const json = JSON.stringify(exportConfig, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ascii-art-settings-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Import settings from JSON file
+  const handleImportSettings = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedConfig = JSON.parse(event.target?.result as string);
+        setConfig((prev) => ({ ...prev, ...importedConfig }));
+        alert('설정을 불러왔습니다!');
+      } catch (error) {
+        console.error('Failed to import settings:', error);
+        alert('설정 파일을 읽을 수 없습니다.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleExportFrame = () => {
@@ -1389,6 +1423,29 @@ Made with 🎨 by I Hate ASCII Art Generator
               <p className="text-white/60 font-mono text-sm">
                 ASCII 스타일 벌레 애니메이션 생성기
               </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleExportSettings}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-mono transition-colors"
+                title="현재 설정을 JSON 파일로 저장"
+              >
+                ↓ Export Settings
+              </button>
+              <button
+                onClick={() => importInputRef.current?.click()}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-mono transition-colors"
+                title="JSON 파일에서 설정 불러오기"
+              >
+                ↑ Import Settings
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportSettings}
+                className="hidden"
+              />
             </div>
           </div>
         </header>

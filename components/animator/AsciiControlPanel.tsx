@@ -61,43 +61,6 @@ export default function AsciiControlPanel({
     }
   };
 
-  // Export settings to JSON file
-  const handleExportSettings = () => {
-    // Remove image data as it's not serializable
-    const { imageData, imageFrames, gifFrameDelay, ...exportConfig } = config;
-    const json = JSON.stringify(exportConfig, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ascii-art-settings-${Date.now()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Import settings from JSON file
-  const handleImportSettings = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const importedConfig = JSON.parse(event.target?.result as string);
-        // Merge with current config to preserve imageData
-        onChange({ ...config, ...importedConfig });
-        alert('설정을 불러왔습니다!');
-      } catch (error) {
-        console.error('Failed to import settings:', error);
-        alert('설정 파일을 읽을 수 없습니다.');
-      }
-    };
-    reader.readAsText(file);
-    // Reset input value so same file can be imported again
-    e.target.value = '';
-  };
-
-  const importInputRef = React.useRef<HTMLInputElement>(null);
   const previewCanvasRef = React.useRef<HTMLCanvasElement>(null);
   const originalCanvasRef = React.useRef<HTMLCanvasElement>(null);
   const gifPreviewFrameRef = React.useRef<number>(0);
@@ -172,32 +135,6 @@ export default function AsciiControlPanel({
 
   return (
     <div className="space-y-6 p-6 bg-white/5 rounded-lg border border-white/10 overflow-y-auto max-h-[calc(100vh-200px)]">
-      <div>
-        {/* Export/Import Buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={handleExportSettings}
-            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-mono transition-colors"
-            title="현재 설정을 JSON 파일로 저장"
-          >
-            ↓ Export Settings
-          </button>
-          <button
-            onClick={() => importInputRef.current?.click()}
-            className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-mono transition-colors"
-            title="JSON 파일에서 설정 불러오기"
-          >
-            ↑ Import Settings
-          </button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleImportSettings}
-            className="hidden"
-          />
-        </div>
-      </div>
 
       {/* Image Upload */}
       <div>
