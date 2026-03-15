@@ -1390,12 +1390,6 @@ Made with 🎨 by I Hate ASCII Art Generator
                 ASCII 스타일 벌레 애니메이션 생성기
               </p>
             </div>
-            <Link
-              href="/"
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-mono text-sm transition-colors"
-            >
-              ← Halftone Animator
-            </Link>
           </div>
         </header>
 

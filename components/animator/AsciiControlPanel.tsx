@@ -20,6 +20,9 @@ export default function AsciiControlPanel({
   onChange,
   onImageUpload,
 }: AsciiControlPanelProps) {
+  // State for Image Transform accordion
+  const [isImageTransformOpen, setIsImageTransformOpen] = React.useState(true);
+
   // Ensure preprocessing and brightness mapping exist with defaults
   const safeConfig = React.useMemo(
     () => ({
@@ -170,8 +173,6 @@ export default function AsciiControlPanel({
   return (
     <div className="space-y-6 p-6 bg-white/5 rounded-lg border border-white/10 overflow-y-auto max-h-[calc(100vh-200px)]">
       <div>
-        <h2 className="text-xl font-semibold text-white font-mono mb-3">ASCII Art Control</h2>
-
         {/* Export/Import Buttons */}
         <div className="flex gap-2">
           <button
@@ -250,10 +251,19 @@ export default function AsciiControlPanel({
       {/* Image Transform Settings - only show when image is loaded */}
       {safeConfig.imageData && (
         <div className="border-t border-white/10 pt-4 space-y-4">
-          <h3 className="text-md font-semibold text-white font-mono">Image Transform</h3>
-          <p className="text-xs text-white/50">
-            임포트한 이미지의 크기와 위치를 조정합니다
-          </p>
+          <button
+            onClick={() => setIsImageTransformOpen(!isImageTransformOpen)}
+            className="w-full flex items-center justify-between text-md font-semibold text-white font-mono hover:text-white/80 transition-colors"
+          >
+            <span>Image Transform</span>
+            <span className="text-xs">{isImageTransformOpen ? '▼' : '▶'}</span>
+          </button>
+
+          {isImageTransformOpen && (
+            <>
+              <p className="text-xs text-white/50">
+                임포트한 이미지의 크기와 위치를 조정합니다
+              </p>
 
           {/* Image Scale */}
           <div>
@@ -327,17 +337,19 @@ export default function AsciiControlPanel({
             </div>
           </div>
 
-          {/* Reset Transform Button */}
-          <button
-            onClick={() => {
-              updateConfig('imageScale', 1.0);
-              updateConfig('imageOffsetX', 0);
-              updateConfig('imageOffsetY', 0);
-            }}
-            className="w-full px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs rounded font-mono transition-colors"
-          >
-            Reset Transform
-          </button>
+              {/* Reset Transform Button */}
+              <button
+                onClick={() => {
+                  updateConfig('imageScale', 1.0);
+                  updateConfig('imageOffsetX', 0);
+                  updateConfig('imageOffsetY', 0);
+                }}
+                className="w-full px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs rounded font-mono transition-colors"
+              >
+                Reset Transform
+              </button>
+            </>
+          )}
         </div>
       )}
 
