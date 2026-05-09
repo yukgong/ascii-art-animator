@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { type Lang, getTexts } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 export default function BugsAnimatorPage() {
   const [config, setConfig] = React.useState<AsciiConfig>({
@@ -126,7 +127,7 @@ export default function BugsAnimatorPage() {
             gifFrameDelay: delay,
           }));
         } catch (gifError) {
-          alert(`GIF load failed: ${gifError instanceof Error ? gifError.message : 'Unknown error'}`);
+          toast.error(tx.toast.gifLoadError(gifError instanceof Error ? gifError.message : 'Unknown error'));
           const imageData = await loadImageForAscii(file, cols, rows);
           setConfig((prev) => ({ ...prev, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
         }
@@ -135,7 +136,7 @@ export default function BugsAnimatorPage() {
         setConfig((prev) => ({ ...prev, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
       }
     } catch (error) {
-      alert(`Failed to load image:\n${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(tx.toast.imageLoadError(error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -175,9 +176,9 @@ export default function BugsAnimatorPage() {
       try {
         const importedConfig = JSON.parse(event.target?.result as string);
         setConfig((prev) => ({ ...prev, ...importedConfig }));
-        alert('설정을 불러왔습니다!');
+        toast.success(tx.toast.settingsImported);
       } catch {
-        alert('설정 파일을 읽을 수 없습니다.');
+        toast.error(tx.toast.settingsImportError);
       }
     };
     reader.readAsText(file);

@@ -113,6 +113,12 @@ const KO = {
     cancel: '취소',
     confirm: '계속하기',
   },
+  toast: {
+    settingsImported: '설정을 불러왔습니다.',
+    settingsImportError: '설정 파일을 읽을 수 없습니다.',
+    gifLoadError: (msg: string) => `GIF 로드 실패: ${msg}`,
+    imageLoadError: (msg: string) => `이미지 로드 실패: ${msg}`,
+  },
 }
 
 const EN = {
@@ -228,6 +234,12 @@ const EN = {
     body: (mb: string, rec: string) => `File size is ${mb} MB (recommended: under ${rec} MB).\nLarge files may cause the browser to freeze.`,
     cancel: 'Cancel',
     confirm: 'Continue',
+  },
+  toast: {
+    settingsImported: 'Settings imported.',
+    settingsImportError: 'Could not read settings file.',
+    gifLoadError: (msg: string) => `GIF load failed: ${msg}`,
+    imageLoadError: (msg: string) => `Image load failed: ${msg}`,
   },
 }
 
