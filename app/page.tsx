@@ -1477,7 +1477,7 @@ Made with 🎨 by ASCII Art Animator
 
         {/* Main Canvas Area */}
         <main className="flex-1 overflow-y-auto bg-background">
-          <div className="h-full flex flex-col items-center justify-center px-6 py-4 gap-3">
+          <div className="min-h-full flex flex-col items-center justify-center px-6 py-4 gap-3">
             {!config.imageData ? (
               /* ── Empty state: Upload dropzone + resolution ── */
               <Card className="w-full max-w-[820px] shadow-sm">
