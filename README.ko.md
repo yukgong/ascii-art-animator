@@ -11,6 +11,10 @@
   </tr>
 </table>
 
+## 🎬 데모
+
+[![ASCII Art Animator 데모](https://img.youtube.com/vi/7HKtvhpyeCc/maxresdefault.jpg)](https://youtu.be/7HKtvhpyeCc)
+
 ## ✨ 주요 기능
 
 - **이미지 → ASCII 변환**: 커스터마이징 가능한 문자 매핑으로 정적 이미지를 ASCII 아트로 변환
