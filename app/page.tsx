@@ -1516,7 +1516,7 @@ Made with 🎨 by ASCII Art Animator
                   </label>
 
                   {/* Import resolution — set before uploading */}
-                  <div className="space-y-2">
+                  <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-xs text-muted-foreground">{tx.image.importRes}</Label>
                       <span className="text-xs font-mono tabular-nums">{config.importResolution ?? 150}</span>

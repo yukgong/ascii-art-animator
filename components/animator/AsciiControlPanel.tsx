@@ -154,7 +154,7 @@ export default function AsciiControlPanel({
             <span>{s.adjust}</span>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="px-4 pb-3 space-y-3">
+            <div className="px-4 pb-3 pt-2 space-y-3">
               {/* 미리보기 */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
@@ -176,7 +176,7 @@ export default function AsciiControlPanel({
               <Separator />
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{tx.adjust.posSection}</p>
 
-              <div className="space-y-2">
+              <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <Label className="text-xs text-muted-foreground">{tx.adjust.scale}</Label>
@@ -186,7 +186,7 @@ export default function AsciiControlPanel({
                 </div>
                 <Slider value={(config.imageScale ?? 1.0) * 100} onValueChange={(v) => updateConfig('imageScale', (v as number) / 100)} min={10} max={300} step={5} />
               </div>
-              <div className="space-y-2">
+              <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <Label className="text-xs text-muted-foreground">{tx.adjust.offsetX}</Label>
@@ -196,7 +196,7 @@ export default function AsciiControlPanel({
                 </div>
                 <Slider value={config.imageOffsetX ?? 0} onValueChange={(v) => updateConfig('imageOffsetX', v as number)} min={-100} max={100} step={1} />
               </div>
-              <div className="space-y-2">
+              <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <Label className="text-xs text-muted-foreground">{tx.adjust.offsetY}</Label>
@@ -232,7 +232,7 @@ export default function AsciiControlPanel({
                 { label: tx.adjust.blur, key: 'blur' as const, min: 0, max: 20, step: 1, tip: tx.adjust.blurTip, display: safeConfig.preprocessing.blur },
                 { label: tx.adjust.grain, key: 'grain' as const, min: 0, max: 100, step: 1, tip: tx.adjust.grainTip, display: safeConfig.preprocessing.grain },
               ].map(({ label, key, min, max, step, tip, display }) => (
-                <div key={key} className="space-y-2">
+                <div key={key}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <Label className="text-xs text-muted-foreground">{label}</Label>
@@ -244,7 +244,7 @@ export default function AsciiControlPanel({
                 </div>
               ))}
 
-              <div className="space-y-2">
+              <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <Label className="text-xs text-muted-foreground">{tx.adjust.gamma}</Label>
@@ -260,7 +260,7 @@ export default function AsciiControlPanel({
                 { label: tx.adjust.whitePoint, key: 'whitePoint' as const, tip: tx.adjust.whitePointTip, display: safeConfig.preprocessing.whitePoint },
                 { label: tx.adjust.threshold, key: 'threshold' as const, tip: tx.adjust.thresholdTip, display: safeConfig.preprocessing.threshold },
               ].map(({ label, key, tip, display }) => (
-                <div key={key} className="space-y-2">
+                <div key={key}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <Label className="text-xs text-muted-foreground">{label}</Label>
@@ -280,7 +280,7 @@ export default function AsciiControlPanel({
                 <Switch checked={safeConfig.preprocessing.dithering ?? false} onCheckedChange={(v) => updateConfig('preprocessing', { ...safeConfig.preprocessing, dithering: v })} />
               </div>
               {safeConfig.preprocessing.dithering && (
-                <div className="space-y-2">
+                <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-xs text-muted-foreground">{tx.adjust.ditheringStrength}</Label>
                     <span className="text-xs font-mono tabular-nums">{safeConfig.preprocessing.ditheringStrength ?? 50}%</span>
@@ -297,8 +297,8 @@ export default function AsciiControlPanel({
       <AccordionItem value="canvas" className="border-0">
         <AccordionTrigger className="px-4 py-2 text-sm font-medium">{s.canvas}</AccordionTrigger>
         <AccordionContent>
-          <div className="px-4 pb-3 space-y-3">
-            <div className="space-y-2">
+          <div className="px-4 pb-3 pt-2 space-y-3">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Label className="text-xs text-muted-foreground">{tx.canvas.size}</Label>
@@ -308,7 +308,7 @@ export default function AsciiControlPanel({
               </div>
               <Slider value={safeConfig.width} onValueChange={(v) => onChange({ ...config, width: v as number, height: v as number })} min={400} max={1200} step={100} />
             </div>
-            <div className="space-y-2">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Label className="text-xs text-muted-foreground">{tx.canvas.cellSize}</Label>
@@ -318,7 +318,7 @@ export default function AsciiControlPanel({
               </div>
               <Slider value={safeConfig.cellSize} onValueChange={(v) => updateConfig('cellSize', v as number)} min={8} max={32} step={1} />
             </div>
-            <div className="space-y-2">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Label className="text-xs text-muted-foreground">{tx.canvas.fontSize}</Label>
@@ -331,12 +331,12 @@ export default function AsciiControlPanel({
               </div>
               <Slider value={safeConfig.fontSize ?? Math.round(safeConfig.cellSize * 0.8)} onValueChange={(v) => updateConfig('fontSize', v as number)} min={6} max={50} step={1} />
               {safeConfig.fontSize && (
-                <button onClick={() => updateConfig('fontSize', undefined)} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
+                <button onClick={() => updateConfig('fontSize', undefined)} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 mb-2">
                   {tx.canvas.fontAutoReset}
                 </button>
               )}
             </div>
-            <div className="space-y-2">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Label className="text-xs text-muted-foreground">{tx.canvas.spacing}</Label>
@@ -355,8 +355,8 @@ export default function AsciiControlPanel({
       <AccordionItem value="animation" className="border-0">
         <AccordionTrigger className="px-4 py-2 text-sm font-medium">{s.animation}</AccordionTrigger>
         <AccordionContent>
-          <div className="px-4 pb-3 space-y-3">
-            <div className="space-y-2">
+          <div className="px-4 pb-3 pt-2 space-y-3">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Label className="text-xs text-muted-foreground">{tx.animation.fps}</Label>
@@ -366,7 +366,7 @@ export default function AsciiControlPanel({
               </div>
               <Slider value={safeConfig.animationSpeed} onValueChange={(v) => updateConfig('animationSpeed', v as number)} min={10} max={60} step={1} />
             </div>
-            <div className="space-y-2">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Label className="text-xs text-muted-foreground">{tx.animation.density}</Label>
@@ -384,7 +384,7 @@ export default function AsciiControlPanel({
       <AccordionItem value="chars" className="border-0">
         <AccordionTrigger className="px-4 py-2 text-sm font-medium">{s.chars}</AccordionTrigger>
         <AccordionContent>
-          <div className="px-4 pb-3 space-y-3">
+          <div className="px-4 pb-3 pt-2 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <Label className="text-xs">{tx.chars.useMapping}</Label>
@@ -394,7 +394,7 @@ export default function AsciiControlPanel({
             </div>
 
             {!safeConfig.useBrightnessMapping && (
-              <div className="space-y-2">
+              <div>
                 <div className="flex items-center">
                   <Label className="text-xs text-muted-foreground">{tx.chars.bgChar}</Label>
                   <InfoTooltip text={tx.chars.bgCharTip} />
@@ -515,7 +515,7 @@ export default function AsciiControlPanel({
       <AccordionItem value="colors" className="border-0">
         <AccordionTrigger className="px-4 py-2 text-sm font-medium">{s.colors}</AccordionTrigger>
         <AccordionContent>
-          <div className="px-4 pb-3 space-y-3">
+          <div className="px-4 pb-3 pt-2 space-y-3">
             <div className="space-y-2">
               <div className="flex items-center">
                 <Label className="text-xs text-muted-foreground">{tx.colors.canvasBg}</Label>
@@ -544,8 +544,8 @@ export default function AsciiControlPanel({
       <AccordionItem value="export" className="border-0">
         <AccordionTrigger className="px-4 py-2 text-sm font-medium">{s.export}</AccordionTrigger>
         <AccordionContent>
-          <div className="px-4 pb-3 space-y-3">
-            <div className="space-y-2">
+          <div className="px-4 pb-3 pt-2 space-y-3">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Label className="text-xs text-muted-foreground">{tx.export.quality}</Label>
@@ -559,7 +559,7 @@ export default function AsciiControlPanel({
                 <span>{tx.export.qualityBest}</span>
               </div>
             </div>
-            <div className="space-y-2">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Label className="text-xs text-muted-foreground">{tx.export.scale}</Label>
