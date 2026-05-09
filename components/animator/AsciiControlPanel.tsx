@@ -438,8 +438,8 @@ export default function AsciiControlPanel({
                 <div className="space-y-1.5 max-h-60 overflow-y-auto">
                   {safeConfig.brightnessLevels.map((level, index) => (
                     <div key={index} className="flex items-center gap-1.5 p-2 bg-muted/60">
-                      <div className="flex flex-col gap-0.5 shrink-0">
-                        <span className="text-[10px] text-muted-foreground font-mono text-center">≤</span>
+                      <div className="relative w-14 h-9 shrink-0 bg-background border">
+                        <span className="absolute top-0.5 inset-x-0 text-center text-[9px] text-muted-foreground leading-none pointer-events-none select-none">≤</span>
                         <input
                           type="text"
                           inputMode="numeric"
@@ -461,7 +461,7 @@ export default function AsciiControlPanel({
                             setDraftThresholds(prev => { const next = { ...prev }; delete next[index]; return next; });
                           }}
                           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                          className="w-13 px-1.5 py-1 bg-background border text-xs font-mono text-center"
+                          className="absolute inset-0 pt-3 pb-0.5 px-1 w-full text-xs font-mono text-center bg-transparent border-0 focus:outline-none"
                         />
                       </div>
                       <input
@@ -476,7 +476,7 @@ export default function AsciiControlPanel({
                         onFocus={(e) => e.target.select()}
                         onClick={(e) => e.currentTarget.select()}
                         maxLength={1}
-                        className="w-9 px-1 py-1 bg-background border text-center text-base font-mono shrink-0"
+                        className="w-9 h-9 px-1 bg-background border text-center text-base font-mono shrink-0"
                       />
                       <input
                         type="color"
@@ -486,18 +486,7 @@ export default function AsciiControlPanel({
                           newLevels[index] = { ...level, color: e.target.value };
                           updateConfig('brightnessLevels', newLevels);
                         }}
-                        title="Level color"
-                        className="w-7 h-7 p-0.5 bg-background border cursor-pointer shrink-0"
-                      />
-                      <input
-                        type="text"
-                        value={level.name}
-                        onChange={(e) => {
-                          const newLevels = [...safeConfig.brightnessLevels];
-                          newLevels[index] = { ...level, name: e.target.value };
-                          updateConfig('brightnessLevels', newLevels);
-                        }}
-                        className="flex-1 px-1.5 py-1 bg-background border text-xs font-mono min-w-0"
+                        className="w-9 h-9 p-0.5 bg-background border cursor-pointer shrink-0"
                       />
                       <button
                         onClick={() => {
