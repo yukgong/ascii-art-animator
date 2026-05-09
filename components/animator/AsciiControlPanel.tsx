@@ -435,9 +435,9 @@ export default function AsciiControlPanel({
                     {tx.chars.addLevel}
                   </Button>
                 </div>
-                <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                <div className="space-y-1.5 max-h-60 overflow-y-auto overflow-x-hidden">
                   {safeConfig.brightnessLevels.map((level, index) => (
-                    <div key={index} className="flex items-center gap-1.5 p-2 bg-muted/60">
+                    <div key={index} className="flex items-center gap-1.5 p-2 bg-muted/60 w-full">
                       <div className="relative w-14 h-9 shrink-0 bg-background border">
                         <span className="absolute top-0.5 inset-x-0 text-center text-[9px] text-muted-foreground leading-none pointer-events-none select-none">≤</span>
                         <input
@@ -495,7 +495,7 @@ export default function AsciiControlPanel({
                           }
                         }}
                         disabled={safeConfig.brightnessLevels.length <= 1}
-                        className="p-1 text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors shrink-0 text-xs"
+                        className="ml-auto p-1 text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors shrink-0 text-xs"
                       >
                         ✕
                       </button>
