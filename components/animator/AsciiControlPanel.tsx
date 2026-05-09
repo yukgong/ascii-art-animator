@@ -75,6 +75,7 @@ export default function AsciiControlPanel({
 
   const [openItems, setOpenItems] = React.useState<string[]>(['canvas', 'animation', 'chars', 'colors']);
   const [previewRevision, setPreviewRevision] = React.useState(0);
+  const [draftThresholds, setDraftThresholds] = React.useState<Record<number, string>>({});
 
   // When imageData first appears, open the adjust panel and schedule a canvas redraw
   // after the DOM has mounted the canvas elements
@@ -440,15 +441,26 @@ export default function AsciiControlPanel({
                       <div className="flex flex-col gap-0.5 shrink-0">
                         <span className="text-[10px] text-muted-foreground font-mono text-center">≤</span>
                         <input
-                          type="number"
-                          value={level.threshold}
+                          type="text"
+                          inputMode="numeric"
+                          value={draftThresholds[index] !== undefined ? draftThresholds[index] : String(level.threshold)}
+                          onFocus={(e) => {
+                            setDraftThresholds(prev => ({ ...prev, [index]: String(level.threshold) }));
+                            e.target.select();
+                          }}
                           onChange={(e) => {
+                            const raw = e.target.value.replace(/[^0-9]/g, '');
+                            setDraftThresholds(prev => ({ ...prev, [index]: raw }));
+                          }}
+                          onBlur={(e) => {
+                            const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0));
                             const newLevels = [...safeConfig.brightnessLevels];
-                            newLevels[index] = { ...level, threshold: parseInt(e.target.value) || 0 };
+                            newLevels[index] = { ...level, threshold: val };
                             newLevels.sort((a, b) => a.threshold - b.threshold);
                             updateConfig('brightnessLevels', newLevels);
+                            setDraftThresholds(prev => { const next = { ...prev }; delete next[index]; return next; });
                           }}
-                          min={0} max={255}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                           className="w-13 px-1.5 py-1 bg-background border text-xs font-mono text-center"
                         />
                       </div>
