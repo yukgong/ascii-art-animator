@@ -1480,7 +1480,7 @@ Made with 🎨 by ASCII Art Animator
           <div className="min-h-full flex flex-col items-center justify-center px-6 py-4 gap-3">
             {!config.imageData ? (
               /* ── Empty state: Upload dropzone + resolution ── */
-              <Card className="w-full max-w-[820px] shadow-sm">
+              <Card className="w-full max-w-[720px] shadow-sm">
                 <CardContent className="p-4 flex flex-col gap-4">
                   {/* Dropzone */}
                   <label
@@ -1531,7 +1531,7 @@ Made with 🎨 by ASCII Art Animator
             ) : (
               <>
                 {/* Image toolbar — replace + resolution */}
-                <Card className="w-full max-w-[820px] shadow-sm">
+                <Card className="w-full max-w-[720px] shadow-sm">
                   <CardContent className="p-3 flex items-center gap-4">
                     <label className="flex items-center justify-center shrink-0 h-8 px-3 border border-dashed border-border cursor-pointer hover:bg-accent transition-colors">
                       <span className="text-xs text-muted-foreground whitespace-nowrap">{tx.image.replace}</span>
@@ -1557,7 +1557,7 @@ Made with 🎨 by ASCII Art Animator
                 </Card>
 
                 {/* Canvas Card */}
-                <Card className="w-full max-w-[820px] shadow-sm">
+                <Card className="w-full max-w-[720px] shadow-sm">
                   <CardContent className="p-3">
                     <div className="aspect-square w-full overflow-hidden">
                       <AsciiCanvas config={config} playing={playing} />
@@ -1566,7 +1566,7 @@ Made with 🎨 by ASCII Art Animator
                 </Card>
 
                 {/* Playback & Export Controls */}
-                <Card className="w-full max-w-[820px] shadow-sm">
+                <Card className="w-full max-w-[720px] shadow-sm">
                   <CardContent className="p-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       {/* Playback */}
