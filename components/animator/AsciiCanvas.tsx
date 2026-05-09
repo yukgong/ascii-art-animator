@@ -20,47 +20,10 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
   const gifFrameIndexRef = React.useRef<number>(0);
   const gifFrameDirectionRef = React.useRef<1 | -1>(1); // For pingpong mode
   const configRef = React.useRef(config);
-  const processedImageCacheRef = React.useRef<{
-    key: string;
-    data: ImageData;
-  } | null>(null);
-
   // Keep config ref updated for animation loop
   React.useEffect(() => {
     configRef.current = config;
   }, [config]);
-
-  // Cache preprocessed image to avoid reprocessing every frame
-  const getProcessedImage = React.useCallback((cfg: AsciiConfig): ImageData | undefined => {
-    if (!cfg.imageData) return undefined;
-    if (!cfg.preprocessing.showEffect) return cfg.imageData;
-
-    // Create cache key from preprocessing settings
-    const cacheKey = JSON.stringify({
-      blur: cfg.preprocessing.blur,
-      grain: cfg.preprocessing.grain,
-      gamma: cfg.preprocessing.gamma,
-      blackPoint: cfg.preprocessing.blackPoint,
-      whitePoint: cfg.preprocessing.whitePoint,
-      width: cfg.imageData.width,
-      height: cfg.imageData.height,
-    });
-
-    // Return cached result if key matches
-    if (processedImageCacheRef.current && processedImageCacheRef.current.key === cacheKey) {
-      return processedImageCacheRef.current.data;
-    }
-
-    // Process and cache
-    const processed = preprocessImage(cfg.imageData, cfg.preprocessing);
-    processedImageCacheRef.current = { key: cacheKey, data: processed };
-    return processed;
-  }, []);
-
-  // Clear cache when image changes
-  React.useEffect(() => {
-    processedImageCacheRef.current = null;
-  }, [config.imageData]);
 
 
   // Draw single frame (for when not animating)
@@ -126,7 +89,7 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
       }
 
     },
-    [getProcessedImage]
+    []
   );
 
   // Draw static frame when config changes (and not playing)
