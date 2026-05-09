@@ -18,7 +18,7 @@ function Slider({
 
   return (
     <SliderPrimitive.Root
-      className={cn("relative flex w-full touch-none select-none items-center py-1", className)}
+      className={cn("relative flex w-full touch-none select-none items-center py-3 cursor-pointer", className)}
       defaultValue={defaultValue}
       value={value}
       min={min}
@@ -33,7 +33,7 @@ function Slider({
         {Array.from({ length: thumbCount }, (_, index) => (
           <SliderPrimitive.Thumb
             key={index}
-            className="absolute block h-3.5 w-3.5 rounded-none border border-border bg-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+            className="absolute block h-3.5 w-3.5 rounded-none border border-border bg-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer"
           />
         ))}
       </SliderPrimitive.Control>
