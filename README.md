@@ -6,8 +6,8 @@
 
 <table>
   <tr>
-    <td><img src="sample/main_gif.gif" width="100%"/></td>
-    <td><img src="sample/unit_main.gif" width="100%"/></td>
+    <td><img src="sample/main_gif.gif" width="400" height="400"/></td>
+    <td><img src="sample/unit_main.gif" width="400" height="400"/></td>
   </tr>
 </table>
 
