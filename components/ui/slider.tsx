@@ -18,7 +18,7 @@ function Slider({
 
   return (
     <SliderPrimitive.Root
-      className={cn("relative flex w-full touch-none select-none items-center py-3 cursor-pointer", className)}
+      className={cn("relative flex w-full touch-none select-none items-center pt-0 pb-3 cursor-pointer", className)}
       defaultValue={defaultValue}
       value={value}
       min={min}
