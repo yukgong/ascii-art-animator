@@ -107,6 +107,12 @@ const KO = {
     recording: (pct: number) => `녹화 중 ${pct}%`,
     record: (type: string, sec: string) => `${type} 녹화 (${sec}초)`,
   },
+  fileSizeWarning: {
+    title: '파일 크기 경고',
+    body: (mb: string, rec: string) => `파일 크기가 ${mb}MB입니다. (권장: ${rec}MB 이하)\n큰 파일은 브라우저가 멈출 수 있습니다.`,
+    cancel: '취소',
+    confirm: '계속하기',
+  },
 }
 
 const EN = {
@@ -216,6 +222,12 @@ const EN = {
     exportCode: 'Export Code',
     recording: (pct: number) => `Recording ${pct}%`,
     record: (type: string, sec: string) => `Record ${type} (${sec}s)`,
+  },
+  fileSizeWarning: {
+    title: 'Large File Warning',
+    body: (mb: string, rec: string) => `File size is ${mb} MB (recommended: under ${rec} MB).\nLarge files may cause the browser to freeze.`,
+    cancel: 'Cancel',
+    confirm: 'Continue',
   },
 }
 

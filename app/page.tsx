@@ -23,6 +23,7 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { type Lang, getTexts } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 export default function BugsAnimatorPage() {
   const [config, setConfig] = React.useState<AsciiConfig>({
@@ -77,27 +78,16 @@ export default function BugsAnimatorPage() {
   const [isUploadedGif, setIsUploadedGif] = React.useState<boolean>(false);
   const [lang, setLang] = React.useState<Lang>('en');
   const [isDragging, setIsDragging] = React.useState(false);
+  const [fileSizeDialog, setFileSizeDialog] = React.useState<{ open: boolean; file: File | null; mb: string; rec: number }>({ open: false, file: null, mb: '0', rec: 5 });
   const importInputRef = React.useRef<HTMLInputElement>(null);
   const mainUploadRef = React.useRef<HTMLInputElement>(null);
   const tx = getTexts(lang);
   const ht = tx.header;
   const pt = tx.playback;
 
-  const handleImageUpload = async (file: File) => {
+  const processFile = async (file: File) => {
     try {
-      const fileSizeMB = file.size / (1024 * 1024);
       const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
-      const maxSize = isGif ? 3 : 5;
-
-      if (fileSizeMB > maxSize) {
-        const confirmUpload = confirm(
-          `⚠️ 파일 크기가 ${fileSizeMB.toFixed(1)}MB입니다.\n` +
-          `${isGif ? 'GIF는 3MB 이하 권장' : '이미지는 5MB 이하 권장'}\n\n` +
-          `큰 파일은 브라우저가 멈출 수 있습니다.\n계속하시겠습니까?`
-        );
-        if (!confirmUpload) return;
-      }
-
       const resolution = config.importResolution ?? 150;
       const aspectRatio = config.width / config.height;
 
@@ -136,7 +126,7 @@ export default function BugsAnimatorPage() {
             gifFrameDelay: delay,
           }));
         } catch (gifError) {
-          alert(`GIF 로드 실패: ${gifError instanceof Error ? gifError.message : '알 수 없는 오류'}\n\n정적 이미지로 로드합니다.`);
+          alert(`GIF load failed: ${gifError instanceof Error ? gifError.message : 'Unknown error'}`);
           const imageData = await loadImageForAscii(file, cols, rows);
           setConfig((prev) => ({ ...prev, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
         }
@@ -145,8 +135,21 @@ export default function BugsAnimatorPage() {
         setConfig((prev) => ({ ...prev, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
       }
     } catch (error) {
-      alert(`이미지 로드 실패:\n${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      alert(`Failed to load image:\n${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    const fileSizeMB = file.size / (1024 * 1024);
+    const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+    const maxSize = isGif ? 3 : 5;
+
+    if (fileSizeMB > maxSize) {
+      setFileSizeDialog({ open: true, file, mb: fileSizeMB.toFixed(1), rec: maxSize });
+      return;
+    }
+
+    await processFile(file);
   };
 
   // Export settings to JSON file
@@ -1636,6 +1639,31 @@ Made with 🎨 by ASCII Art Animator
           </div>
         </main>
       </div>
+
+      <Dialog open={fileSizeDialog.open} onOpenChange={(open) => setFileSizeDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span>⚠️</span>
+              {tx.fileSizeWarning.title}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground whitespace-pre-line">
+            {tx.fileSizeWarning.body(fileSizeDialog.mb, String(fileSizeDialog.rec))}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFileSizeDialog(prev => ({ ...prev, open: false }))}>
+              {tx.fileSizeWarning.cancel}
+            </Button>
+            <Button onClick={async () => {
+              setFileSizeDialog(prev => ({ ...prev, open: false }));
+              if (fileSizeDialog.file) await processFile(fileSizeDialog.file);
+            }}>
+              {tx.fileSizeWarning.confirm}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
