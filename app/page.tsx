@@ -25,6 +25,7 @@ import { type Lang, getTexts } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { Star } from 'lucide-react';
 
 export default function BugsAnimatorPage() {
   const [config, setConfig] = React.useState<AsciiConfig>({
@@ -80,11 +81,19 @@ export default function BugsAnimatorPage() {
   const [lang, setLang] = React.useState<Lang>('en');
   const [isDragging, setIsDragging] = React.useState(false);
   const [fileSizeDialog, setFileSizeDialog] = React.useState<{ open: boolean; file: File | null; mb: string; rec: number }>({ open: false, file: null, mb: '0', rec: 5 });
+  const [githubStars, setGithubStars] = React.useState<number | null>(null);
   const importInputRef = React.useRef<HTMLInputElement>(null);
   const mainUploadRef = React.useRef<HTMLInputElement>(null);
   const tx = getTexts(lang);
   const ht = tx.header;
   const pt = tx.playback;
+
+  React.useEffect(() => {
+    fetch('https://api.github.com/repos/yukgong/ascii-art-animator')
+      .then(r => r.json())
+      .then(d => { if (typeof d.stargazers_count === 'number') setGithubStars(d.stargazers_count); })
+      .catch(() => {});
+  }, []);
 
   const processFile = async (file: File) => {
     try {
@@ -1459,6 +1468,21 @@ Made with 🎨 by ASCII Art Animator
             onChange={handleImportSettings}
             className="hidden"
           />
+          <Separator orientation="vertical" className="h-4 mx-1" />
+          <a
+            href="https://github.com/yukgong/ascii-art-animator"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-8 px-2.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors rounded-sm"
+          >
+            <Star className="w-3.5 h-3.5" />
+            <span>Star</span>
+            {githubStars !== null && (
+              <span className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-[10px] font-mono leading-none">
+                {githubStars.toLocaleString()}
+              </span>
+            )}
+          </a>
           <Separator orientation="vertical" className="h-4 mx-1" />
           <button
             onClick={() => setLang(l => l === 'ko' ? 'en' : 'ko')}
