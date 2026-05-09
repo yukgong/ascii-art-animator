@@ -187,7 +187,7 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
 
   return (
     <div
-      className="relative w-full h-full flex items-center justify-center rounded-lg overflow-hidden"
+      className="relative w-full h-full flex items-center justify-center rounded-none overflow-hidden"
       style={{ backgroundColor: config.canvasBackgroundColor || '#000000' }}
     >
       <canvas
@@ -200,7 +200,7 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
 
       {!playing && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-black/80 px-6 py-3 rounded-lg text-white/60 text-sm font-mono">
+          <div className="bg-black/80 px-6 py-3 rounded-none text-white/60 text-sm font-mono">
             ⏸ Paused
           </div>
         </div>

@@ -6,52 +6,65 @@ import AsciiControlPanel from '@/components/animator/AsciiControlPanel';
 import {
   loadImageForAscii,
   loadGifForAscii,
-  DEFAULT_BRIGHTNESS_LEVELS,
   type AsciiConfig,
 } from '@/lib/animations/ascii-engine';
-import Link from 'next/link';
 // @ts-ignore - gif.js doesn't have proper ESM support
 import GIF from 'gif.js';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { type Lang, getTexts } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 
 export default function BugsAnimatorPage() {
   const [config, setConfig] = React.useState<AsciiConfig>({
-    width: 800,
-    height: 800,
-    cellSize: 15,
+    width: 1200,
+    height: 1200,
+    cellSize: 8,
+    fontSize: 27,
     backgroundChar: '-',
-    backgroundColor: '#666666',
-    canvasBackgroundColor: '#ffffff',
-    density: 0.3,
+    backgroundColor: '#e8d7c9',
+    canvasBackgroundColor: '#361a07',
+    density: 0,
     spacing: 0,
-    animationSpeed: 12,
+    animationSpeed: 10,
     trail: false,
     preprocessing: {
       blur: 0,
-      grain: 5,
-      gamma: 1.0,
-      blackPoint: 30,
-      whitePoint: 255,
-      threshold: 180,
+      grain: 0,
+      gamma: 0.33,
+      blackPoint: 249,
+      whitePoint: 20,
+      threshold: 237,
       showEffect: true,
-      dithering: false,
-      ditheringStrength: 50,
-      invert: false,
+      invert: true,
+      dithering: true,
+      ditheringStrength: 65,
     },
     useBrightnessMapping: true,
-    brightnessLevels: DEFAULT_BRIGHTNESS_LEVELS,
-    // GIF Export settings
-    gifExportQuality: 10, // 1-30: lower = better quality, larger file
-    gifExportScale: 1.0, // 0.25-1.0: export scale
-    // Import settings
-    importResolution: 150, // 50-300: grid resolution
-    // Image transform settings
-    imageScale: 1.0, // 0.1-3.0: scale of imported image
-    imageOffsetX: 0, // -100 to 100: horizontal offset (%)
-    imageOffsetY: 0, // -100 to 100: vertical offset (%)
-    // GIF loop settings
-    loopMode: 'normal', // 'normal' | 'pingpong'
+    brightnessLevels: [
+      { threshold: 60,  char: '◼', name: 'Very Dark' },
+      { threshold: 80,  char: '▓', name: 'Custom' },
+      { threshold: 163, char: '▒', name: 'Dark' },
+      { threshold: 196, char: '░', name: 'Dark-Medium' },
+      { threshold: 240, char: '∴', name: 'Medium-Light' },
+      { threshold: 241, char: '✕', name: 'Medium' },
+      { threshold: 250, char: '⋮', name: 'Light' },
+      { threshold: 255, char: '・', name: 'Very Light' },
+    ],
+    gifExportQuality: 21,
+    gifExportScale: 1.0,
+    importResolution: 150,
+    imageScale: 1.0,
+    imageOffsetX: 0,
+    imageOffsetY: 0,
+    loopMode: 'normal',
   });
 
   const [playing, setPlaying] = React.useState(true);
@@ -60,13 +73,16 @@ export default function BugsAnimatorPage() {
   const [recordingType, setRecordingType] = React.useState<'gif' | 'webm'>('gif');
   const [uploadedImageBase64, setUploadedImageBase64] = React.useState<string | null>(null);
   const [isUploadedGif, setIsUploadedGif] = React.useState<boolean>(false);
+  const [lang, setLang] = React.useState<Lang>('ko');
+  const [isDragging, setIsDragging] = React.useState(false);
   const importInputRef = React.useRef<HTMLInputElement>(null);
+  const mainUploadRef = React.useRef<HTMLInputElement>(null);
+  const tx = getTexts(lang);
+  const ht = tx.header;
+  const pt = tx.playback;
 
   const handleImageUpload = async (file: File) => {
-    console.log('📤 Starting image upload:', file.name, file.type, `${(file.size / 1024 / 1024).toFixed(2)}MB`);
-
     try {
-      // Check file size (warn if > 3MB for GIF, 5MB for static)
       const fileSizeMB = file.size / (1024 * 1024);
       const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
       const maxSize = isGif ? 3 : 5;
@@ -77,61 +93,39 @@ export default function BugsAnimatorPage() {
           `${isGif ? 'GIF는 3MB 이하 권장' : '이미지는 5MB 이하 권장'}\n\n` +
           `큰 파일은 브라우저가 멈출 수 있습니다.\n계속하시겠습니까?`
         );
-        if (!confirmUpload) {
-          console.log('❌ Upload cancelled by user');
-          return;
-        }
+        if (!confirmUpload) return;
       }
 
-      // Use configurable resolution for image processing (independent of cellSize)
-      // This ensures consistent quality regardless of display settings
-      const resolution = config.importResolution ?? 150; // User-configurable grid resolution
+      const resolution = config.importResolution ?? 150;
       const aspectRatio = config.width / config.height;
 
       let cols, rows;
       if (aspectRatio > 1) {
-        // Wider than tall
         cols = resolution;
         rows = Math.floor(resolution / aspectRatio);
       } else {
-        // Taller than wide or square
         rows = resolution;
         cols = Math.floor(resolution * aspectRatio);
       }
 
-      console.log(`📐 Internal image resolution: ${cols}x${rows} (resolution: ${resolution})`);
-      console.log(`📺 Display grid size: ${Math.floor(config.width / config.cellSize)}x${Math.floor(config.height / config.cellSize)} (cellSize: ${config.cellSize})`);
       setIsUploadedGif(isGif);
 
-      // Convert file to base64 for export
-      console.log('🔄 Converting to base64...');
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          resolve(e.target?.result as string);
-        };
+        reader.onload = (e) => { resolve(e.target?.result as string); };
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
       setUploadedImageBase64(base64);
-      console.log(`✅ Base64 saved (${Math.round(base64.length / 1024)}KB)`);
 
       if (isGif) {
-        console.log('🎬 Starting GIF parsing...');
         try {
-          // Show loading indicator
-          const startTime = Date.now();
-
-          // Load GIF frames with timeout
           const gifPromise = loadGifForAscii(file, cols, rows);
           const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('GIF parsing timeout (30s)')), 30000)
           );
 
           const { frames, delay } = await Promise.race([gifPromise, timeoutPromise]) as Awaited<ReturnType<typeof loadGifForAscii>>;
-
-          const loadTime = ((Date.now() - startTime) / 1000).toFixed(1);
-          console.log(`✅ GIF loaded: ${frames.length} frames in ${loadTime}s`);
 
           setConfig((prev) => ({
             ...prev,
@@ -140,34 +134,16 @@ export default function BugsAnimatorPage() {
             gifFrameDelay: delay,
           }));
         } catch (gifError) {
-          console.error('❌ GIF parsing failed:', gifError);
           alert(`GIF 로드 실패: ${gifError instanceof Error ? gifError.message : '알 수 없는 오류'}\n\n정적 이미지로 로드합니다.`);
-
-          // Fallback to static image
-          console.log('🔄 Loading as static image...');
           const imageData = await loadImageForAscii(file, cols, rows);
-          setConfig((prev) => ({
-            ...prev,
-            imageData,
-            imageFrames: undefined,
-            gifFrameDelay: undefined,
-          }));
-          console.log('✅ Static image loaded');
+          setConfig((prev) => ({ ...prev, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
         }
       } else {
-        console.log('🖼️ Loading static image...');
         const imageData = await loadImageForAscii(file, cols, rows);
-        setConfig((prev) => ({
-          ...prev,
-          imageData,
-          imageFrames: undefined,
-          gifFrameDelay: undefined,
-        }));
-        console.log('✅ Static image loaded');
+        setConfig((prev) => ({ ...prev, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
       }
     } catch (error) {
-      console.error('❌ Critical error during upload:', error);
-      alert(`이미지 로드 실패:\n${error instanceof Error ? error.message : '알 수 없는 오류'}\n\n콘솔을 확인하세요.`);
+      alert(`이미지 로드 실패:\n${error instanceof Error ? error.message : '알 수 없는 오류'}`);
     }
   };
 
@@ -195,8 +171,7 @@ export default function BugsAnimatorPage() {
         const importedConfig = JSON.parse(event.target?.result as string);
         setConfig((prev) => ({ ...prev, ...importedConfig }));
         alert('설정을 불러왔습니다!');
-      } catch (error) {
-        console.error('Failed to import settings:', error);
+      } catch {
         alert('설정 파일을 읽을 수 없습니다.');
       }
     };
@@ -302,7 +277,7 @@ export default function BugsAnimatorPage() {
 
     const gif = new GIF({
       workers: 2,
-      quality: config.gifExportQuality ?? 10,
+      quality: 31 - (config.gifExportQuality ?? 21),
       workerScript: '/gif.worker.js',
       width: exportWidth,
       height: exportHeight,
@@ -829,14 +804,12 @@ export default function FlyingBugsAnimation({
     // Generate preprocessed frames for GIF (brightness maps encoded as Base64)
     const preprocessedFrames = generatePreprocessedFrames();
 
-    // Prepare image data - use file reference for static images, embedded for GIF
     const imageFileName = uploadedImageBase64 ? (isUploadedGif ? 'animation.gif' : 'animation.png') : null;
     const isGif = isUploadedGif;
     const hasPreprocessedFrames = preprocessedFrames !== null && preprocessedFrames.frames.length > 0;
+    // For static images, embed base64 directly so HTML works without a server
+    const embeddedImageUrl = !hasPreprocessedFrames && !isUploadedGif ? uploadedImageBase64 : null;
 
-    // Create standalone HTML file
-    // If GIF, embed preprocessed brightness maps for offline playback
-    // If static image, use file reference (simpler case)
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -867,12 +840,10 @@ export default function FlyingBugsAnimation({
     const config = ${configJSON};
 
     // Preprocessed GIF frames (brightness maps encoded as Base64)
-    // null for static images or no image
     const preprocessedFrames = ${hasPreprocessedFrames ? JSON.stringify(preprocessedFrames) : 'null'};
 
-    // Image file reference (for static images only)
-    const imageFileName = ${!hasPreprocessedFrames && imageFileName ? `'${imageFileName}'` : 'null'};
-    const isGif = ${isGif};
+    // Static image embedded as base64 data URL (works without a server)
+    const imageUrl = ${embeddedImageUrl ? `'${embeddedImageUrl}'` : 'null'};
 
     // ============================================
     // ASCII Engine (100% matching AsciiCanvas.tsx)
@@ -892,7 +863,6 @@ export default function FlyingBugsAnimation({
       return brightnessMap;
     }
 
-    // Load single image from file (for static images only)
     async function loadImageData(imageUrl) {
       if (!imageUrl) return null;
 
@@ -958,9 +928,8 @@ export default function FlyingBugsAnimation({
           decodedBrightnessMaps = preprocessedFrames.frames.map(
             base64 => decodeBrightnessMap(base64, preprocessedFrames.cols, preprocessedFrames.rows)
           );
-        } else if (imageFileName) {
-          // Load static image from file
-          staticImageData = await loadImageData(imageFileName);
+        } else if (imageUrl) {
+          staticImageData = await loadImageData(imageUrl);
         }
       } catch {
         // Silent error handling
@@ -1000,52 +969,6 @@ export default function FlyingBugsAnimation({
 </body>
 </html>`;
 
-    // Create server startup scripts
-    const startServerSh = `#!/bin/bash
-echo "🚀 Starting local server at http://localhost:8000"
-echo "📂 Serving files from: $(pwd)"
-echo ""
-echo "✨ Open http://localhost:8000 in your browser"
-echo "⏹️  Press Ctrl+C to stop"
-echo ""
-
-# Check if python3 is available
-if command -v python3 &> /dev/null; then
-    python3 -m http.server 8000
-elif command -v python &> /dev/null; then
-    python -m http.server 8000
-else
-    echo "❌ Python not found. Please install Python 3."
-    echo "   Visit: https://www.python.org/downloads/"
-    exit 1
-fi`;
-
-    const startServerBat = `@echo off
-echo.
-echo ========================================
-echo   ASCII Art Animation - Local Server
-echo ========================================
-echo.
-echo Starting local server at http://localhost:8000
-echo Serving files from: %cd%
-echo.
-echo Open http://localhost:8000 in your browser
-echo Press Ctrl+C to stop
-echo.
-echo ========================================
-echo.
-
-REM Check if python is available
-python --version >nul 2>&1
-if %errorlevel% == 0 (
-    python -m http.server 8000
-) else (
-    echo Python not found. Please install Python 3.
-    echo Visit: https://www.python.org/downloads/
-    pause
-    exit /b 1
-)`;
-
     // Create React component file
     const reactComponentContent = generateReactComponent(imageFileName, isGif, configJSON);
 
@@ -1068,12 +991,8 @@ export default function Page() {
 
 ## HTML (테스트)
 
-${hasPreprocessedFrames ? `**✅ GIF 프레임이 HTML에 임베드되어 있어 file:// 프로토콜로 바로 열 수 있습니다!**
+\`index.html\`을 더블클릭하면 바로 실행됩니다. (서버 불필요)
 
-\`index.html\`을 더블클릭하면 바로 실행됩니다.
-` : `1. \`./start-server.sh\` 또는 \`start-server.bat\` 실행
-2. http://localhost:8000 열기
-`}
 ## 커스터마이징
 
 config.json의 설정값을 props로 전달:
@@ -1097,11 +1016,6 @@ config.json의 설정값을 props로 전달:
 | backgroundColor | ASCII 문자 색상 |
 | backgroundChar | ASCII 문자 (기본값) |
 
-${isUploadedGif ? `
-## GIF 정보
-
-${hasPreprocessedFrames ? '- GIF 프레임이 brightness map으로 사전 처리되어 HTML에 임베드됨\n- 오프라인에서도 작동\n- file:// 프로토콜 지원' : '- React 컴포넌트: gifuct-js가 CDN에서 자동 로드됨\n- GIF 파일을 public/ 폴더에 넣어야 함'}
-` : ''}
 ---
 Made with 🎨 by I Hate ASCII Art Generator
 `;
@@ -1111,10 +1025,8 @@ Made with 🎨 by I Hate ASCII Art Generator
     zip.file('FlyingBugsAnimation.tsx', reactComponentContent);
     zip.file('config.json', configJSON);
     zip.file('README.md', readmeContent);
-    zip.file('start-server.sh', startServerSh);
-    zip.file('start-server.bat', startServerBat);
 
-    // Add image/GIF file if present
+    // Add image/GIF file if present (for React component use)
     if (uploadedImageBase64 && imageFileName) {
       // Convert base64 to blob
       const base64Data = uploadedImageBase64.split(',')[1];
@@ -1410,267 +1322,219 @@ Made with 🎨 by I Hate ASCII Art Generator
     `;
   };
 
+  const recordDuration = config.imageFrames && config.imageFrames.length > 1
+    ? (config.imageFrames.length / config.animationSpeed).toFixed(1)
+    : '3';
+
   return (
-    <div className="min-h-screen p-8 bg-black">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <header className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2 font-mono">
-                🎨 ASCII Art Animator
-              </h1>
-              <p className="text-white/60 font-mono text-sm">
-                ASCII 스타일 벌레 애니메이션 생성기
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleExportSettings}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-mono transition-colors"
-                title="현재 설정을 JSON 파일로 저장"
-              >
-                ↓ Export Settings
-              </button>
-              <button
-                onClick={() => importInputRef.current?.click()}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-mono transition-colors"
-                title="JSON 파일에서 설정 불러오기"
-              >
-                ↑ Import Settings
-              </button>
-              <input
-                ref={importInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleImportSettings}
-                className="hidden"
-              />
-            </div>
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Top Header */}
+      <header className="shrink-0 bg-card border-b px-5 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 bg-foreground flex items-center justify-center shrink-0">
+            <span className="text-background text-xs font-mono font-bold leading-none">A</span>
           </div>
-        </header>
+          <span className="font-semibold text-sm tracking-tight">ASCII Art Animator</span>
+          {config.imageFrames && config.imageFrames.length > 1 && (
+            <Badge variant="secondary" className="text-xs">
+              GIF {config.imageFrames.length}f
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={handleExportSettings} className="text-xs h-8">
+            {ht.exportSettings}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => importInputRef.current?.click()} className="text-xs h-8">
+            {ht.importSettings}
+          </Button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImportSettings}
+            className="hidden"
+          />
+          <Separator orientation="vertical" className="h-4 mx-1" />
+          <button
+            onClick={() => setLang(l => l === 'ko' ? 'en' : 'ko')}
+            className="h-8 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            {lang === 'ko' ? 'EN' : '한국어'}
+          </button>
+        </div>
+      </header>
 
-        {/* Main Grid */}
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Canvas */}
-          <div className="lg:col-span-2">
-            <div className="aspect-square w-full mb-4">
-              <AsciiCanvas config={config} playing={playing} />
-            </div>
+      {/* Main Body */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar — Controls */}
+        <aside className="w-[320px] shrink-0 border-r bg-card overflow-y-auto">
+          <AsciiControlPanel
+            config={config}
+            onChange={setConfig}
+            lang={lang}
+          />
+        </aside>
 
-            {/* Controls */}
-            <div className="space-y-3">
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setPlaying(!playing)}
-                  className={`px-6 py-3 rounded-lg font-mono font-medium transition-colors ${
-                    playing
-                      ? 'bg-white/10 hover:bg-white/20 text-white'
-                      : 'bg-red-600 hover:bg-red-700 text-white'
-                  }`}
-                >
-                  {playing ? '⏸ Pause' : '▶ Resume'}
-                </button>
-                <div className="flex-1" />
-                <button
-                  onClick={handleExportFrame}
-                  disabled={isRecording}
-                  className="px-6 py-3 bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:text-white/30 text-white rounded-lg font-mono font-medium transition-colors"
-                >
-                  ↓ Export PNG
-                </button>
-                <button
-                  onClick={handleExportCode}
-                  disabled={isRecording}
-                  className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-900 text-white rounded-lg font-mono font-medium transition-colors"
-                  title="현재 설정으로 웹사이트에 사용할 수 있는 코드 export"
-                >
-                  📦 Export Code
-                </button>
-              </div>
+        {/* Main Canvas Area */}
+        <main className="flex-1 overflow-y-auto bg-background">
+          <div className="h-full flex flex-col items-center justify-center px-6 py-4 gap-3">
+            {!config.imageData ? (
+              /* ── Empty state: Upload dropzone + resolution ── */
+              <Card className="w-full max-w-[820px] shadow-sm">
+                <CardContent className="p-4 flex flex-col gap-4">
+                  {/* Dropzone */}
+                  <label
+                    className={cn(
+                      'aspect-square w-full border-2 border-dashed border-border cursor-pointer flex flex-col items-center justify-center gap-2 transition-colors',
+                      isDragging ? 'bg-accent border-foreground' : 'hover:bg-accent/50'
+                    )}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleImageUpload(file);
+                    }}
+                  >
+                    <div className="flex flex-col items-center gap-1 select-none">
+                      <span className="text-sm font-medium text-muted-foreground">{tx.image.upload}</span>
+                      <span className="text-xs text-muted-foreground/50">{tx.image.uploadSub}</span>
+                    </div>
+                    <input
+                      ref={mainUploadRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }}
+                      className="hidden"
+                    />
+                  </label>
 
-              {/* Animation Export */}
-              <div className="flex gap-3 items-center">
-                <button
-                  onClick={handleRecord}
-                  disabled={isRecording}
-                  className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 text-white rounded-lg font-mono font-medium transition-colors"
-                >
-                  {isRecording ? (
-                    <>
-                      🎬 Recording... {recordingProgress}%
-                    </>
-                  ) : (
-                    (() => {
-                      const duration = config.imageFrames && config.imageFrames.length > 1
-                        ? (config.imageFrames.length / config.animationSpeed).toFixed(1)
-                        : '3';
-                      return `🎬 Record ${recordingType.toUpperCase()} (${duration}s)`;
-                    })()
-                  )}
-                </button>
-                <select
-                  value={recordingType}
-                  onChange={(e) => setRecordingType(e.target.value as 'gif' | 'webm')}
-                  disabled={isRecording}
-                  className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white font-mono text-sm disabled:opacity-50 cursor-pointer"
-                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
-                >
-                  <option value="gif" style={{ backgroundColor: '#1a1a1a' }}>GIF</option>
-                  <option value="webm" style={{ backgroundColor: '#1a1a1a' }}>WebM</option>
-                </select>
-              </div>
-            </div>
+                  {/* Import resolution — set before uploading */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">{tx.image.importRes}</Label>
+                      <span className="text-xs font-mono tabular-nums">{config.importResolution ?? 150}</span>
+                    </div>
+                    <Slider
+                      value={config.importResolution ?? 150}
+                      onValueChange={(v) => setConfig(prev => ({ ...prev, importResolution: v as number }))}
+                      min={50} max={300} step={10}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground/50">
+                      <span>{tx.image.fast}</span>
+                      <span>{tx.image.detailed}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {/* Image toolbar — replace + resolution */}
+                <Card className="w-full max-w-[820px] shadow-sm">
+                  <CardContent className="p-3 flex items-center gap-4">
+                    <label className="flex items-center justify-center shrink-0 h-8 px-3 border border-dashed border-border cursor-pointer hover:bg-accent transition-colors">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">{tx.image.replace}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }}
+                        className="hidden"
+                      />
+                    </label>
+                    <Separator orientation="vertical" className="h-5" />
+                    <div className="flex flex-1 items-center gap-3">
+                      <span className="text-xs text-muted-foreground shrink-0">{tx.image.importRes}</span>
+                      <Slider
+                        value={config.importResolution ?? 150}
+                        onValueChange={(v) => setConfig(prev => ({ ...prev, importResolution: v as number }))}
+                        min={50} max={300} step={10}
+                        className="flex-1"
+                      />
+                      <span className="text-xs font-mono tabular-nums w-8 text-right">{config.importResolution ?? 150}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Canvas Card */}
+                <Card className="w-full max-w-[820px] shadow-sm">
+                  <CardContent className="p-3">
+                    <div className="aspect-square w-full overflow-hidden">
+                      <AsciiCanvas config={config} playing={playing} />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Playback & Export Controls */}
+                <Card className="w-full max-w-[820px] shadow-sm">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Playback */}
+                      <Button
+                        variant={playing ? 'outline' : 'default'}
+                        size="sm"
+                        onClick={() => setPlaying(!playing)}
+                        className="h-8 text-xs"
+                      >
+                        {playing ? pt.pause : pt.resume}
+                      </Button>
+
+                      <Separator orientation="vertical" className="h-5 mx-1" />
+
+                      {/* Export */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportFrame}
+                        disabled={isRecording}
+                        className="h-8 text-xs"
+                      >
+                        {pt.exportPng}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportCode}
+                        disabled={isRecording}
+                        className="h-8 text-xs"
+                      >
+                        {pt.exportCode}
+                      </Button>
+
+                      {/* Record — pushed to the right */}
+                      <div className="flex items-center gap-2 ml-auto">
+                        <Select
+                          value={recordingType}
+                          onValueChange={(v) => setRecordingType(v as 'gif' | 'webm')}
+                          disabled={isRecording}
+                        >
+                          <SelectTrigger className="w-20 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="gif">GIF</SelectItem>
+                            <SelectItem value="webm">WebM</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          onClick={handleRecord}
+                          disabled={isRecording}
+                          className="h-8 text-xs"
+                        >
+                          {isRecording
+                            ? pt.recording(recordingProgress)
+                            : pt.record(recordingType.toUpperCase(), recordDuration)}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
-
-          {/* Control Panel */}
-          <div className="lg:col-span-1">
-            <AsciiControlPanel
-              config={config}
-              onChange={setConfig}
-              onImageUpload={handleImageUpload}
-            />
-          </div>
-        </div>
-
-        {/* Info */}
-        <div className="mt-8 p-6 bg-white/5 rounded-lg border border-white/10">
-          <h3 className="text-lg font-semibold text-white mb-3 font-mono">사용 방법</h3>
-          <ol className="space-y-2 text-white/70 text-sm font-mono list-decimal list-inside">
-            <li>설정을 변경하면 실시간으로 화면에 반영됩니다 (자동 업데이트)</li>
-            <li>Canvas Size로 캔버스 크기를 설정하세요</li>
-            <li>
-              크기 조절:
-              <ul className="ml-6 mt-1 space-y-1 list-disc">
-                <li>Cell Size: 그리드 간격 (작을수록 촘촘함)</li>
-                <li>Font Size: 배경 문자 크기</li>
-                <li className="text-yellow-400/80">
-                  <strong>Bug Font Size</strong>: 벌레 문자 크기 (배경보다 크게 설정하면 잘 보임!)
-                </li>
-              </ul>
-            </li>
-            <li>Bug Count로 날아다니는 벌레 개수를 설정하세요</li>
-            <li>Bug Speed로 벌레들의 이동 속도를 조절하세요</li>
-            <li>
-              Bug Morph Speed로 벌레 모양 변화 속도를 조절하세요
-              <br />→ 0: 변화 없음, 50: 보통, 100: 빠르게 변화 (*❊※ 같은 다양한 모양으로!)
-            </li>
-            <li>FPS로 애니메이션 프레임 속도를 설정하세요</li>
-            <li>
-              색상 설정:
-              <ul className="ml-6 mt-1 space-y-1 list-disc">
-                <li>Canvas Background Color: 전체 배경색 (컬러 피커로 선택)</li>
-                <li>Pattern Background Color: 배경 문자 색상</li>
-                <li>Bug Colors: 벌레 색상 (최대 4개 컬러 피커 + 추가 입력 가능)</li>
-              </ul>
-            </li>
-            <li>
-              [★] Use Brightness Mapping:
-              <ul className="ml-6 mt-1 space-y-1 list-disc">
-                <li>ON: 명암값에 따라 다른 문자 사용 (풍부한 표현)</li>
-                <li>Brightness Levels 편집: 단계별 threshold, 문자, 이름 변경 가능</li>
-                <li>+ Add Level: 새로운 명암 단계 추가</li>
-                <li>✕ 버튼: 해당 단계 삭제</li>
-                <li>Reset to Default: 기본 8단계로 복원</li>
-                <li>OFF: 단일 배경 문자 사용 (빠른 렌더링)</li>
-              </ul>
-            </li>
-            <li>
-              Pattern Spacing으로 문자 사이 간격 조절:
-              <ul className="ml-6 mt-1 space-y-1 list-disc">
-                <li>패턴 개수는 유지, 문자 사이의 물리적 간격만 조절</li>
-                <li>-10 ~ -1: 간격 좁힘 (문자들이 서로 가까워짐)</li>
-                <li>0: 기본 간격 (cellSize 그대로)</li>
-                <li>+1 ~ +10: 간격 넓힘 (문자들이 서로 멀어짐)</li>
-                <li>Actual cell size = cellSize + spacing</li>
-              </ul>
-            </li>
-            <li>Grid Density로 배경 패턴 밀도를 조절하세요 (이미지 없을 때만)</li>
-            <li>Bug Characters에서 벌레 모양을 선택하세요 (다중 선택 가능)</li>
-            <li>
-              이미지/GIF 업로드:
-              <ul className="ml-6 mt-1 space-y-1 list-disc">
-                <li>정적 이미지: 밝기 기반 배경 패턴 생성</li>
-                <li className="text-green-400/80">
-                  <strong>🎬 움직이는 GIF</strong>: 실시간 ASCII 애니메이션 변환!
-                  <br />→ GIF의 각 프레임이 자동으로 ASCII로 변환되어 재생됩니다
-                </li>
-              </ul>
-            </li>
-            <li>
-              Image Preprocessing으로 이미지 전처리:
-              <ul className="ml-6 mt-1 space-y-1 list-disc">
-                <li>[★] Show Effect: 전처리 효과 적용 토글</li>
-                <li>
-                  <strong>Blur</strong>: 이미지 흐림 효과 (↑ 높을수록 디테일 손실)
-                  <br />→ 디테일 보존하려면 0-2 권장
-                </li>
-                <li>
-                  <strong>Grain</strong>: 필름 노이즈 효과 (↑ 높을수록 거친 질감)
-                  <br />→ 디테일 보존하려면 0-10 권장
-                </li>
-                <li>
-                  <strong>Gamma</strong>: 중간톤 밝기 조절 (&lt;1: 어둡게, =1: 원본, &gt;1: 밝게)
-                  <br />→ 디테일 보존하려면 0.8-1.2 권장
-                </li>
-                <li>
-                  <strong>Black Point</strong>: 어두운 영역 임계값 (↓ 낮을수록 어두운 부분 살림)
-                  <br />→ 디테일 보존하려면 0-50 권장
-                </li>
-                <li>
-                  <strong>White Point</strong>: 밝은 영역 임계값 (↑ 높을수록 밝은 부분 살림)
-                  <br />→ 디테일 보존하려면 200-255 권장
-                </li>
-                <li>
-                  <strong>Threshold</strong>: 패턴 생성 임계값 (↓ 낮을수록 패턴 많음)
-                  <br />→ 이미지에 따라 150-200 조절
-                </li>
-                <li>
-                  <strong>Dithering</strong>: 부드러운 명암 전환 (Floyd-Steinberg 알고리즘)
-                  <br />→ 명암이 계단처럼 보일 때 활성화 (강도: 50-70 권장)
-                </li>
-                <li className="text-yellow-400/80">
-                  💡 <strong>디테일이 뭉개질 때:</strong> Blur=0, Grain=5, Gamma=1.0, BlackPoint=30, WhitePoint=255, Dithering=ON
-                </li>
-                <li className="text-green-400/80">
-                  ✨ <strong>부드러운 명암을 원할 때:</strong> Dithering을 활성화하고 강도를 60-70으로 설정
-                </li>
-              </ul>
-            </li>
-            <li>⏸ Pause 버튼으로 벌레 움직임을 일시정지할 수 있습니다</li>
-            <li>
-              Export 기능:
-              <ul className="ml-6 mt-1 space-y-1 list-disc">
-                <li>↓ Export PNG: 현재 프레임을 이미지로 저장</li>
-                <li className="text-cyan-400/80">
-                  <strong>📦 Export Code:</strong> 웹사이트에 바로 사용할 수 있는 코드 다운로드!
-                  <ul className="ml-6 mt-1 space-y-1">
-                    <li>ZIP 파일로 다운로드 (index.html + config.json + README)</li>
-                    <li>index.html을 바로 브라우저에서 열면 실행됨</li>
-                    <li>자신의 웹사이트에 통합 가능</li>
-                    <li>현재 설정값이 모두 포함됨</li>
-                  </ul>
-                </li>
-                <li>
-                  🎬 Record Animation: 애니메이션 녹화
-                  <ul className="ml-6 mt-1 space-y-1">
-                    <li className="text-green-400/80">
-                      <strong>GIF 업로드 시:</strong> 원본 GIF 길이만큼 자동 녹화!
-                    </li>
-                    <li>정적 이미지: 3초 녹화 (기본)</li>
-                    <li>GIF: 범용성 높음, 모든 사이트 지원, 파일 크기 큼</li>
-                    <li>WebM: 고품질, 작은 파일 크기, 웹 최적화 (HTML5 video)</li>
-                  </ul>
-                </li>
-              </ul>
-            </li>
-          </ol>
-        </div>
-
-        {/* Credits */}
-        <div className="mt-8 text-center text-white/40 font-mono text-sm">
-          <p>Made with ❤️ and lots of ASCII characters</p>
-        </div>
+        </main>
       </div>
     </div>
   );

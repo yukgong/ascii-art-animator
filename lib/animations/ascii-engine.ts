@@ -272,7 +272,6 @@ export function preprocessImage(
 
   // Validate dimensions
   if (!width || !height || width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height)) {
-    console.error('Invalid image dimensions:', { width, height });
     throw new Error(`Invalid ImageData dimensions: width=${width}, height=${height}`);
   }
 
@@ -455,12 +454,6 @@ export async function loadGifForAscii(
         const gif = parseGIF(arrayBuffer);
         const frames = decompressFrames(gif, true);
 
-        console.log(`GIF info: ${frames.length} frames found`);
-        if (frames.length > 0) {
-          const firstFrame = frames[0];
-          console.log(`First frame: width=${firstFrame.dims?.width}, height=${firstFrame.dims?.height}, patch length=${firstFrame.patch?.length}`);
-        }
-
         if (frames.length === 0) {
           reject(new Error('No frames found in GIF'));
           return;
@@ -469,8 +462,6 @@ export async function loadGifForAscii(
         // Get GIF dimensions from first frame
         const gifWidth = frames[0].dims.width;
         const gifHeight = frames[0].dims.height;
-
-        console.log(`GIF dimensions: ${gifWidth}x${gifHeight}`);
 
         const canvas = document.createElement('canvas');
         canvas.width = targetWidth;
@@ -503,32 +494,14 @@ export async function loadGifForAscii(
           ? frames.filter((_, i) => i % frameStep === 0).slice(0, maxFrames)
           : frames;
 
-        console.log(`📊 GIF Processing: ${frames.length} total frames → ${framesToProcess.length} frames (step: ${frameStep})`);
-
-        if (frames.length > maxFrames) {
-          console.warn(`⚠️ GIF has ${frames.length} frames. Limiting to ${framesToProcess.length} frames for performance.`);
-        }
-
         // Process each frame
         for (let i = 0; i < framesToProcess.length; i++) {
-          // Progress logging (every 10 frames)
-          if (i % 10 === 0 || i === framesToProcess.length - 1) {
-            console.log(`⏳ Processing frame ${i + 1}/${framesToProcess.length}...`);
-          }
-
           const frame = framesToProcess[i];
           const { dims, patch, delay, disposalType } = frame;
 
-          if (!dims || !patch || patch.length === 0) {
-            console.warn(`⚠️ Skipping frame ${i}: missing dims or patch`);
-            continue;
-          }
+          if (!dims || !patch || patch.length === 0) continue;
 
-          // Validate dimensions
-          if (!dims.width || !dims.height || dims.width <= 0 || dims.height <= 0) {
-            console.warn(`⚠️ Skipping frame ${i}: invalid dimensions (${dims.width}x${dims.height})`);
-            continue;
-          }
+          if (!dims.width || !dims.height || dims.width <= 0 || dims.height <= 0) continue;
 
           totalDelay += delay || 100;
 
@@ -587,8 +560,7 @@ export async function loadGifForAscii(
             ctx.drawImage(tempCanvas, offsetX, offsetY, drawWidth, drawHeight);
             const scaledImageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
             imageFrames.push(scaledImageData);
-          } catch (error) {
-            console.warn(`Failed to process frame ${i}: ${error}`);
+          } catch {
             continue;
           }
         }
@@ -601,14 +573,11 @@ export async function loadGifForAscii(
 
         const averageDelay = totalDelay > 0 ? Math.round(totalDelay / imageFrames.length) : 100;
 
-        console.log(`✅ Successfully parsed ${imageFrames.length} frames from GIF (avg delay: ${averageDelay}ms)`);
-
         resolve({
           frames: imageFrames,
           delay: averageDelay,
         });
       } catch (error) {
-        console.error('GIF parsing error:', error);
         reject(new Error(`Failed to parse GIF: ${error instanceof Error ? error.message : String(error)}`));
       }
     };

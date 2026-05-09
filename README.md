@@ -2,7 +2,7 @@
 
 > Transform images and GIFs into stunning animated ASCII art
 
-[Live Demo](https://ascii-art-animator.vercel.app) (coming soon)
+[한국어](README.ko.md)
 
 ## ✨ Features
 
@@ -26,14 +26,9 @@
 ## 🚀 Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/ascii-art-animator.git
+git clone https://github.com/yukgong/ascii-art-animator.git
 cd ascii-art-animator
-
-# Install dependencies
 npm install
-
-# Run development server
 npm run dev
 ```
 
@@ -80,8 +75,6 @@ ascii-art-animator/
 
 ## 🎯 Core Algorithm
 
-The ASCII art generation process:
-
 1. **Image Preprocessing**: Apply gamma, blur, grain, dithering, and color adjustments
 2. **Brightness Extraction**: Convert each pixel to brightness value (0-255)
 3. **Character Mapping**: Map brightness to ASCII characters based on threshold levels
@@ -99,20 +92,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by classic ASCII art generators
-- Floyd-Steinberg dithering algorithm
-- gif.js for GIF generation
-- The open-source community
-
-## 📧 Contact
-
-- GitHub: [@your-username](https://github.com/your-username)
-- Twitter: [@your-handle](https://twitter.com/your-handle)
-
----
-
-Made with ❤️ and lots of ASCII characters
+MIT License — see the [LICENSE](LICENSE) file for details.
