@@ -1150,17 +1150,15 @@ Made with 🎨 by ASCII Art Animator
   const generateInlineEngine = () => {
     return `
     // ============================================
-    // Brightness-based character selection
-    // (matches ascii-engine.ts selectCharByBrightness)
+    // Brightness-based character + color selection
     // ============================================
-    function selectCharByBrightness(brightness, levels, fallbackChar) {
-      const sorted = [...levels].sort((a, b) => a.threshold - b.threshold);
-      for (const level of sorted) {
+    function selectLevelByBrightness(brightness, sortedLevels, fallbackChar, fallbackColor) {
+      for (const level of sortedLevels) {
         if (brightness <= level.threshold) {
-          return level.char;
+          return { char: level.char, color: level.color || fallbackColor };
         }
       }
-      return fallbackChar;
+      return { char: fallbackChar, color: fallbackColor };
     }
 
     // ============================================
@@ -1346,27 +1344,30 @@ Made with 🎨 by ASCII Art Animator
       }
 
       // Generate grid
+      const sortedLevels = config.brightnessLevels
+        ? [...config.brightnessLevels].sort((a, b) => a.threshold - b.threshold)
+        : [];
       for (let row = 0; row < rows; row++) {
         grid[row] = [];
         colors[row] = [];
         for (let col = 0; col < cols; col++) {
           let char = ' ';
+          let color = config.backgroundColor;
 
           if (brightnessMap && brightnessMap[row]) {
             const brightness = brightnessMap[row][col];
 
-            if (config.useBrightnessMapping && config.brightnessLevels && config.brightnessLevels.length > 0) {
-              // Use brightness mapping
+            if (config.useBrightnessMapping && sortedLevels.length > 0) {
               if (brightness < config.preprocessing.threshold) {
-                char = selectCharByBrightness(brightness, config.brightnessLevels, config.backgroundChar);
+                const selected = selectLevelByBrightness(brightness, sortedLevels, config.backgroundChar, config.backgroundColor);
+                char = selected.char;
+                color = selected.color;
               }
             } else {
-              // Simple threshold
               const shouldDraw = brightness < config.preprocessing.threshold;
               char = shouldDraw ? config.backgroundChar : ' ';
             }
           } else {
-            // No image - use density pattern
             const hash = (row * 2654435761 + col * 2246822519) >>> 0;
             const pseudoRandom = (hash % 1000) / 1000;
             const shouldDraw = pseudoRandom < config.density;
@@ -1374,7 +1375,7 @@ Made with 🎨 by ASCII Art Animator
           }
 
           grid[row][col] = char;
-          colors[row][col] = config.backgroundColor;
+          colors[row][col] = color;
         }
       }
 

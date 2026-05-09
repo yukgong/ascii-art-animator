@@ -9,6 +9,7 @@ export interface BrightnessLevel {
   threshold: number; // 0-255: brightness threshold
   char: string; // Any character
   name: string;
+  color?: string; // Optional per-level color (falls back to backgroundColor)
 }
 
 // Default brightness levels for rich ASCII art
@@ -78,23 +79,18 @@ export interface AsciiFrame {
 /**
  * Select character based on brightness level
  */
-function selectCharByBrightness(
+function selectLevelByBrightness(
   brightness: number,
-  levels: BrightnessLevel[],
-  fallbackChar: string
-): string {
-  // Sort levels by threshold descending (darkest first)
-  const sorted = [...levels].sort((a, b) => a.threshold - b.threshold);
-
-  // Find the first level where brightness is below threshold
-  for (const level of sorted) {
+  sortedLevels: BrightnessLevel[], // pre-sorted ascending by threshold
+  fallbackChar: string,
+  fallbackColor: string,
+): { char: string; color: string } {
+  for (const level of sortedLevels) {
     if (brightness <= level.threshold) {
-      return level.char;
+      return { char: level.char, color: level.color || fallbackColor };
     }
   }
-
-  // If brightness is above all thresholds, return space or fallback
-  return fallbackChar;
+  return { char: fallbackChar, color: fallbackColor };
 }
 
 /**
@@ -216,29 +212,29 @@ export function generateFrame(config: AsciiConfig): AsciiFrame {
   // Initialize grid with background
   const grid: string[][] = [];
   const colors: string[][] = [];
+  const sortedLevels = [...config.brightnessLevels].sort((a, b) => a.threshold - b.threshold);
 
   for (let row = 0; row < rows; row++) {
     grid[row] = [];
     colors[row] = [];
     for (let col = 0; col < cols; col++) {
       let char: string = ' ';
+      let color: string = config.backgroundColor;
 
       if (processedImageData) {
         const brightness = brightnessMap[row][col];
 
-        if (config.useBrightnessMapping && config.brightnessLevels.length > 0) {
-          // Use brightness mapping to select character
+        if (config.useBrightnessMapping && sortedLevels.length > 0) {
           if (brightness < config.preprocessing.threshold) {
-            char = selectCharByBrightness(brightness, config.brightnessLevels, config.backgroundChar);
+            const selected = selectLevelByBrightness(brightness, sortedLevels, config.backgroundChar, config.backgroundColor);
+            char = selected.char;
+            color = selected.color;
           }
         } else {
-          // Use simple threshold
           const shouldDraw = brightness < config.preprocessing.threshold;
           char = shouldDraw ? config.backgroundChar : ' ';
         }
       } else {
-        // No image - use density with deterministic pattern
-        // Use simple hash based on position to create stable pattern
         const hash = (row * 2654435761 + col * 2246822519) >>> 0;
         const pseudoRandom = (hash % 1000) / 1000;
         const shouldDraw = pseudoRandom < config.density;
@@ -246,7 +242,7 @@ export function generateFrame(config: AsciiConfig): AsciiFrame {
       }
 
       grid[row][col] = char;
-      colors[row][col] = config.backgroundColor;
+      colors[row][col] = color;
     }
   }
 

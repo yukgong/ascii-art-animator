@@ -467,6 +467,17 @@ export default function AsciiControlPanel({
                         className="w-9 px-1 py-1 bg-background border text-center text-base font-mono shrink-0"
                       />
                       <input
+                        type="color"
+                        value={level.color || safeConfig.backgroundColor}
+                        onChange={(e) => {
+                          const newLevels = [...safeConfig.brightnessLevels];
+                          newLevels[index] = { ...level, color: e.target.value };
+                          updateConfig('brightnessLevels', newLevels);
+                        }}
+                        title="Level color"
+                        className="w-7 h-7 p-0.5 bg-background border cursor-pointer shrink-0"
+                      />
+                      <input
                         type="text"
                         value={level.name}
                         onChange={(e) => {
