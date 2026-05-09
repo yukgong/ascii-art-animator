@@ -151,11 +151,6 @@ export default function AsciiControlPanel({
         <AccordionItem value="adjust" className="border-0">
           <AccordionTrigger className="px-4 py-2 text-sm font-medium">
             <span>{s.adjust}</span>
-            {safeConfig.imageFrames && safeConfig.imageFrames.length > 1 && (
-              <Badge variant="secondary" className="ml-2 text-xs font-normal">
-                {safeConfig.imageFrames.length}f GIF
-              </Badge>
-            )}
           </AccordionTrigger>
           <AccordionContent>
             <div className="px-4 pb-3 space-y-3">

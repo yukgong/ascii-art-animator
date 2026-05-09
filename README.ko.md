@@ -4,6 +4,13 @@
 
 [English](README.md)
 
+<table>
+  <tr>
+    <td><img src="sample/main_gif.gif" width="100%"/></td>
+    <td><img src="sample/unit_main.gif" width="100%"/></td>
+  </tr>
+</table>
+
 ## ✨ 주요 기능
 
 - **이미지 → ASCII 변환**: 커스터마이징 가능한 문자 매핑으로 정적 이미지를 ASCII 아트로 변환

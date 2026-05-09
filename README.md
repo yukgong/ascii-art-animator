@@ -4,6 +4,13 @@
 
 [한국어](README.ko.md)
 
+<table>
+  <tr>
+    <td><img src="sample/main_gif.gif" width="100%"/></td>
+    <td><img src="sample/unit_main.gif" width="100%"/></td>
+  </tr>
+</table>
+
 ## ✨ Features
 
 - **Image to ASCII Conversion**: Convert static images into ASCII art with customizable character mapping

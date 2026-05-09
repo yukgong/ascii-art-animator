@@ -1439,11 +1439,6 @@ Made with 🎨 by ASCII Art Animator
             <span className="text-background text-xs font-mono font-bold leading-none">A</span>
           </div>
           <span className="font-semibold text-sm tracking-tight">ASCII Art Animator</span>
-          {config.imageFrames && config.imageFrames.length > 1 && (
-            <Badge variant="secondary" className="text-xs">
-              GIF {config.imageFrames.length}f
-            </Badge>
-          )}
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={handleExportSettings} className="text-xs h-8">
