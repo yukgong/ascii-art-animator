@@ -18,7 +18,7 @@ function Slider({
 
   return (
     <SliderPrimitive.Root
-      className={cn("relative flex w-full touch-none select-none items-center pt-0 pb-3 cursor-pointer", className)}
+      className={cn("relative flex w-full touch-none select-none items-center py-1 cursor-pointer", className)}
       defaultValue={defaultValue}
       value={value}
       min={min}
@@ -26,7 +26,7 @@ function Slider({
       thumbAlignment="edge"
       {...props}
     >
-      <SliderPrimitive.Control className="relative flex w-full items-center">
+      <SliderPrimitive.Control className="relative flex w-full items-center h-8">
         <SliderPrimitive.Track className="relative h-1.5 w-full grow rounded-none bg-border overflow-hidden">
           <SliderPrimitive.Indicator className="absolute h-full rounded-none bg-foreground/70" />
         </SliderPrimitive.Track>
