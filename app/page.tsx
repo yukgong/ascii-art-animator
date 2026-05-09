@@ -6,6 +6,8 @@ import AsciiControlPanel from '@/components/animator/AsciiControlPanel';
 import {
   loadImageForAscii,
   loadGifForAscii,
+  generateFrame,
+  preprocessImage,
   type AsciiConfig,
 } from '@/lib/animations/ascii-engine';
 // @ts-ignore - gif.js doesn't have proper ESM support
@@ -180,10 +182,48 @@ export default function BugsAnimatorPage() {
   };
 
   const handleExportFrame = () => {
-    const canvas = document.querySelector('canvas');
-    if (!canvas) return;
+    const rawFrame = (config.imageFrames && config.imageFrames.length > 0)
+      ? config.imageFrames[0]
+      : config.imageData;
+    if (!rawFrame) return;
 
-    canvas.toBlob((blob) => {
+    const imageData = (rawFrame.width > 0 && config.preprocessing.showEffect)
+      ? preprocessImage(rawFrame, config.preprocessing)
+      : rawFrame;
+
+    const frame = generateFrame({
+      ...config,
+      imageData,
+      preprocessing: { ...config.preprocessing, showEffect: false },
+    });
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = config.width;
+    offscreen.height = config.height;
+    const ctx = offscreen.getContext('2d');
+    if (!ctx) return;
+
+    const actualCellSize = config.cellSize + config.spacing;
+    const fontSize = config.fontSize ?? config.cellSize * 0.8;
+    const cols = Math.floor(config.width / config.cellSize);
+    const rows = Math.floor(config.height / config.cellSize);
+
+    ctx.fillStyle = config.canvasBackgroundColor || '#000000';
+    ctx.fillRect(0, 0, config.width, config.height);
+    ctx.font = `${fontSize}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const char = frame.grid[row][col];
+        if (char === ' ') continue;
+        ctx.fillStyle = frame.colors[row][col];
+        ctx.fillText(char, col * actualCellSize + actualCellSize / 2, row * actualCellSize + actualCellSize / 2);
+      }
+    }
+
+    offscreen.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -195,7 +235,7 @@ export default function BugsAnimatorPage() {
   };
 
   const handleRecordWebM = async () => {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+    const canvas = document.getElementById('ascii-main-canvas') as HTMLCanvasElement;
     if (!canvas || isRecording) return;
 
     setIsRecording(true);
@@ -255,25 +295,24 @@ export default function BugsAnimatorPage() {
   };
 
   const handleRecordGif = async () => {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    if (!canvas || isRecording) return;
-
+    if (isRecording) return;
     setIsRecording(true);
     setRecordingProgress(0);
 
-    // GIF settings
-    // Calculate duration: use GIF length if available, otherwise 3 seconds
-    const duration = config.imageFrames && config.imageFrames.length > 1
-      ? (config.imageFrames.length / config.animationSpeed) * 1000
-      : 3000;
-    const fps = Math.min(config.animationSpeed, 20); // Cap at 20fps for reasonable file size
-    const totalFrames = Math.floor((duration / 1000) * fps);
-    const frameInterval = 1000 / fps;
-
-    // Apply export scale
     const scale = config.gifExportScale ?? 1.0;
-    const exportWidth = Math.floor(canvas.width * scale);
-    const exportHeight = Math.floor(canvas.height * scale);
+    const exportWidth = Math.floor(config.width * scale);
+    const exportHeight = Math.floor(config.height * scale);
+
+    const isAnimated = config.imageFrames && config.imageFrames.length > 1;
+    const frameCount = isAnimated ? config.imageFrames!.length : 1;
+    const frameDelay = config.gifFrameDelay ?? 100;
+
+    // Offscreen canvas — renders ASCII art directly, no live canvas dependency
+    const offscreen = document.createElement('canvas');
+    offscreen.width = config.width;
+    offscreen.height = config.height;
+    const ctx = offscreen.getContext('2d');
+    if (!ctx) { setIsRecording(false); return; }
 
     const gif = new GIF({
       workers: 2,
@@ -283,53 +322,70 @@ export default function BugsAnimatorPage() {
       height: exportHeight,
     });
 
-    let frameCount = 0;
+    gif.on('finished', (blob: Blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ascii-art-${Date.now()}.gif`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setIsRecording(false);
+      setRecordingProgress(0);
+    });
 
-    // Capture frames
-    const captureFrame = () => {
-      if (frameCount >= totalFrames) {
-        // Rendering finished, now render GIF
-        gif.on('finished', (blob: Blob) => {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `ascii-art-${Date.now()}.gif`;
-          link.click();
-          URL.revokeObjectURL(url);
-          setIsRecording(false);
-          setRecordingProgress(0);
-        });
+    gif.on('progress', (progress: number) => {
+      setRecordingProgress(Math.round(50 + progress * 50));
+    });
 
-        gif.on('progress', (progress: number) => {
-          setRecordingProgress(Math.round(progress * 100));
-        });
+    const cols = Math.floor(config.width / config.cellSize);
+    const rows = Math.floor(config.height / config.cellSize);
+    const actualCellSize = config.cellSize + config.spacing;
+    const fontSize = config.fontSize ?? config.cellSize * 0.8;
 
-        gif.render();
-        return;
-      }
+    for (let i = 0; i < frameCount; i++) {
+      const rawFrame = isAnimated ? config.imageFrames![i] : config.imageData;
+      const imageData = (rawFrame && rawFrame.width > 0 && config.preprocessing.showEffect)
+        ? preprocessImage(rawFrame, config.preprocessing)
+        : rawFrame;
 
-      // Add frame to GIF (with scaling if needed)
-      if (scale < 1) {
-        // Create scaled canvas for smaller export
-        const scaledCanvas = document.createElement('canvas');
-        scaledCanvas.width = exportWidth;
-        scaledCanvas.height = exportHeight;
-        const scaledCtx = scaledCanvas.getContext('2d');
-        if (scaledCtx) {
-          scaledCtx.drawImage(canvas, 0, 0, exportWidth, exportHeight);
-          gif.addFrame(scaledCanvas, { copy: true, delay: frameInterval });
+      const frame = generateFrame({
+        ...config,
+        imageData,
+        preprocessing: { ...config.preprocessing, showEffect: false },
+      });
+
+      ctx.fillStyle = config.canvasBackgroundColor || '#000000';
+      ctx.fillRect(0, 0, config.width, config.height);
+      ctx.font = `${fontSize}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const char = frame.grid[row][col];
+          if (char === ' ') continue;
+          ctx.fillStyle = frame.colors[row][col];
+          ctx.fillText(char, col * actualCellSize + actualCellSize / 2, row * actualCellSize + actualCellSize / 2);
         }
-      } else {
-        gif.addFrame(canvas, { copy: true, delay: frameInterval });
       }
-      frameCount++;
-      setRecordingProgress(Math.round((frameCount / totalFrames) * 50)); // First 50% is capturing
 
-      setTimeout(captureFrame, frameInterval);
-    };
+      if (scale < 1) {
+        const scaled = document.createElement('canvas');
+        scaled.width = exportWidth;
+        scaled.height = exportHeight;
+        scaled.getContext('2d')?.drawImage(offscreen, 0, 0, exportWidth, exportHeight);
+        gif.addFrame(scaled, { copy: true, delay: frameDelay });
+      } else {
+        gif.addFrame(offscreen, { copy: true, delay: frameDelay });
+      }
 
-    // Start capturing
-    setTimeout(captureFrame, frameInterval);
+      setRecordingProgress(Math.round(((i + 1) / frameCount) * 50));
+
+      // Yield to UI between frames so progress bar updates
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    gif.render();
   };
 
   const handleRecord = () => {
@@ -499,7 +555,7 @@ interface AsciiConfig {
   }>;
 }
 
-interface FlyingBugsAnimationProps {
+interface AnimationProps {
   config?: Partial<AsciiConfig>;
   imageUrl?: string;
   isGif?: boolean;
@@ -509,13 +565,13 @@ interface FlyingBugsAnimationProps {
 
 const DEFAULT_CONFIG: AsciiConfig = ${configJSON};
 
-export default function FlyingBugsAnimation({
+export default function Animation({
   config: customConfig,
   imageUrl = ${imageFileName ? `'/${imageFileName}'` : 'null'},
   isGif = ${isGif},
   className,
   style,
-}: FlyingBugsAnimationProps) {
+}: AnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
 
@@ -972,33 +1028,36 @@ export default function FlyingBugsAnimation({
     // Create React component file
     const reactComponentContent = generateReactComponent(imageFileName, isGif, configJSON);
 
-    // Create README (simplified version ~50 lines)
     const readmeContent = `# ASCII Art Animation
 
-## React/Next.js
+---
 
-1. \`FlyingBugsAnimation.tsx\` → \`components/\`
-${imageFileName ? `2. \`${imageFileName}\` → \`public/\`\n` : ''}
-3. 사용:
+## English
+
+### React / Next.js
+
+1. Copy \`animation.tsx\` → \`components/\`
+${imageFileName ? `2. Copy \`${imageFileName}\` → \`public/\`\n` : ''}
+3. Use it:
 
 \`\`\`tsx
-import FlyingBugsAnimation from '@/components/FlyingBugsAnimation';
+import Animation from '@/components/animation';
 
 export default function Page() {
-  return <FlyingBugsAnimation />;
+  return <Animation />;
 }
 \`\`\`
 
-## HTML (테스트)
+### HTML (Quick Test)
 
-\`index.html\`을 더블클릭하면 바로 실행됩니다. (서버 불필요)
+Double-click \`index.html\` — no server required.
 
-## 커스터마이징
+### Customization
 
-config.json의 설정값을 props로 전달:
+Pass config values as props:
 
 \`\`\`tsx
-<FlyingBugsAnimation
+<Animation
   config={{
     fontSize: 12,
     animationSpeed: 20,
@@ -1006,7 +1065,52 @@ config.json의 설정값을 props로 전달:
 />
 \`\`\`
 
-## 주요 설정값
+### Key Config Options
+
+| Option | Description |
+|--------|-------------|
+| fontSize | ASCII character size |
+| cellSize | Grid cell size |
+| animationSpeed | FPS |
+| backgroundColor | ASCII character color |
+| backgroundChar | Default background character |
+
+---
+
+## 한국어
+
+### React / Next.js
+
+1. \`animation.tsx\` → \`components/\` 에 복사
+${imageFileName ? `2. \`${imageFileName}\` → \`public/\` 에 복사\n` : ''}
+3. 사용:
+
+\`\`\`tsx
+import Animation from '@/components/animation';
+
+export default function Page() {
+  return <Animation />;
+}
+\`\`\`
+
+### HTML (빠른 테스트)
+
+\`index.html\` 더블클릭 — 서버 없이 바로 실행됩니다.
+
+### 커스터마이징
+
+config.json 설정값을 props로 전달:
+
+\`\`\`tsx
+<Animation
+  config={{
+    fontSize: 12,
+    animationSpeed: 20,
+  }}
+/>
+\`\`\`
+
+### 주요 설정값
 
 | 설정 | 설명 |
 |------|------|
@@ -1014,15 +1118,15 @@ config.json의 설정값을 props로 전달:
 | cellSize | 그리드 셀 크기 |
 | animationSpeed | FPS |
 | backgroundColor | ASCII 문자 색상 |
-| backgroundChar | ASCII 문자 (기본값) |
+| backgroundChar | 기본 배경 문자 |
 
 ---
-Made with 🎨 by I Hate ASCII Art Generator
+Made with 🎨 by ASCII Art Animator
 `;
 
     // Add files to ZIP
     zip.file('index.html', htmlContent);
-    zip.file('FlyingBugsAnimation.tsx', reactComponentContent);
+    zip.file('animation.tsx', reactComponentContent);
     zip.file('config.json', configJSON);
     zip.file('README.md', readmeContent);
 

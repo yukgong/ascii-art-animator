@@ -192,6 +192,7 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
     >
       <canvas
         ref={canvasRef}
+        id="ascii-main-canvas"
         width={config.width}
         height={config.height}
         className="max-w-full max-h-full"
