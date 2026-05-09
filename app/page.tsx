@@ -75,7 +75,7 @@ export default function BugsAnimatorPage() {
   const [recordingType, setRecordingType] = React.useState<'gif' | 'webm'>('gif');
   const [uploadedImageBase64, setUploadedImageBase64] = React.useState<string | null>(null);
   const [isUploadedGif, setIsUploadedGif] = React.useState<boolean>(false);
-  const [lang, setLang] = React.useState<Lang>('ko');
+  const [lang, setLang] = React.useState<Lang>('en');
   const [isDragging, setIsDragging] = React.useState(false);
   const importInputRef = React.useRef<HTMLInputElement>(null);
   const mainUploadRef = React.useRef<HTMLInputElement>(null);

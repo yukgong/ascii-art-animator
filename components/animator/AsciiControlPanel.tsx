@@ -38,7 +38,7 @@ interface AsciiControlPanelProps {
 export default function AsciiControlPanel({
   config,
   onChange,
-  lang = 'ko',
+  lang = 'en',
 }: AsciiControlPanelProps) {
   const tx = getTexts(lang);
   const s = tx.sections;
