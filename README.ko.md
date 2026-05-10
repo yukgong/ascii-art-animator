@@ -13,6 +13,8 @@
 
 ## 🎬 데모
 
+**[🌐 라이브 데모 →](https://ascii-art-animator-app.vercel.app/)**
+
 [![ASCII Art Animator 데모](https://img.youtube.com/vi/7HKtvhpyeCc/maxresdefault.jpg)](https://youtu.be/7HKtvhpyeCc)
 
 ## ✨ 주요 기능
