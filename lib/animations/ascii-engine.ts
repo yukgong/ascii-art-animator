@@ -431,6 +431,105 @@ export async function loadImageForAscii(
 }
 
 /**
+ * Load video frames for ASCII conversion
+ */
+export async function loadVideoForAscii(
+  file: File,
+  targetWidth: number,
+  targetHeight: number,
+  maxFrames: number = 50,
+  onProgress?: (progress: number) => void
+): Promise<{ frames: ImageData[]; delay: number }> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    const objectUrl = URL.createObjectURL(file);
+
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+
+    video.onloadedmetadata = async () => {
+      const duration = video.duration;
+      if (!duration || !isFinite(duration) || duration <= 0) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Invalid video duration'));
+        return;
+      }
+
+      const totalFrames = Math.min(Math.floor(duration * 24), maxFrames);
+      const frameInterval = duration / totalFrames;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Cannot get canvas context'));
+        return;
+      }
+
+      const frames: ImageData[] = [];
+
+      const captureFrame = (time: number): Promise<void> =>
+        new Promise((res) => {
+          video.onseeked = () => {
+            const vw = video.videoWidth;
+            const vh = video.videoHeight;
+            const vAspect = vw / vh;
+            const tAspect = targetWidth / targetHeight;
+            let dw = targetWidth, dh = targetHeight, ox = 0, oy = 0;
+            if (vAspect > tAspect) {
+              dh = targetWidth / vAspect;
+              oy = (targetHeight - dh) / 2;
+            } else {
+              dw = targetHeight * vAspect;
+              ox = (targetWidth - dw) / 2;
+            }
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, targetWidth, targetHeight);
+            ctx.drawImage(video, ox, oy, dw, dh);
+            frames.push(ctx.getImageData(0, 0, targetWidth, targetHeight));
+            res();
+          };
+          video.currentTime = time;
+        });
+
+      try {
+        for (let i = 0; i < totalFrames; i++) {
+          await captureFrame(i * frameInterval);
+          onProgress?.(Math.round(((i + 1) / totalFrames) * 100));
+        }
+      } catch (err) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error(`Frame extraction failed: ${err instanceof Error ? err.message : String(err)}`));
+        return;
+      }
+
+      URL.revokeObjectURL(objectUrl);
+
+      if (frames.length === 0) {
+        reject(new Error('No frames extracted from video'));
+        return;
+      }
+
+      resolve({
+        frames,
+        delay: Math.round(frameInterval * 1000),
+      });
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to load video'));
+    };
+
+    video.src = objectUrl;
+  });
+}
+
+/**
  * Load GIF frames for ASCII conversion
  */
 export async function loadGifForAscii(

@@ -76,6 +76,7 @@ export default function AsciiControlPanel({
   const [openItems, setOpenItems] = React.useState<string[]>(['canvas', 'animation', 'chars', 'colors']);
   const [previewRevision, setPreviewRevision] = React.useState(0);
   const [draftThresholds, setDraftThresholds] = React.useState<Record<number, string>>({});
+  const [draftDims, setDraftDims] = React.useState<{ w?: string; h?: string }>({});
 
   // When imageData first appears, open the adjust panel and schedule a canvas redraw
   // after the DOM has mounted the canvas elements
@@ -298,15 +299,64 @@ export default function AsciiControlPanel({
         <AccordionTrigger className="px-4 py-2 text-sm font-medium">{s.canvas}</AccordionTrigger>
         <AccordionContent>
           <div className="px-4 pb-3 pt-2 space-y-3">
-            <div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Label className="text-xs text-muted-foreground">{tx.canvas.size}</Label>
-                  <InfoTooltip text={tx.canvas.sizeTip} />
-                </div>
-                <span className="text-xs font-mono tabular-nums">{safeConfig.width}px</span>
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Label className="text-xs text-muted-foreground">{tx.canvas.size}</Label>
+                <InfoTooltip text={tx.canvas.sizeTip} />
               </div>
-              <Slider value={safeConfig.width} onValueChange={(v) => onChange({ ...config, width: v as number, height: v as number })} min={400} max={1200} step={100} />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground/50 w-4 shrink-0 font-mono">W</span>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={draftDims.w ?? String(safeConfig.width)}
+                  onFocus={() => setDraftDims(d => ({ ...d, w: String(safeConfig.width) }))}
+                  onChange={(e) => setDraftDims(d => ({ ...d, w: e.target.value.replace(/[^0-9]/g, '') }))}
+                  onBlur={() => {
+                    const v = Math.max(200, Math.min(2400, parseInt(draftDims.w || '0') || safeConfig.width));
+                    onChange({ ...config, width: v });
+                    setDraftDims(d => ({ ...d, w: undefined }));
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                  className="h-7 text-xs font-mono text-right flex-1"
+                />
+                <span className="text-xs text-muted-foreground/40 shrink-0">px</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground/50 w-4 shrink-0 font-mono">H</span>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={draftDims.h ?? String(safeConfig.height)}
+                  onFocus={() => setDraftDims(d => ({ ...d, h: String(safeConfig.height) }))}
+                  onChange={(e) => setDraftDims(d => ({ ...d, h: e.target.value.replace(/[^0-9]/g, '') }))}
+                  onBlur={() => {
+                    const v = Math.max(200, Math.min(2400, parseInt(draftDims.h || '0') || safeConfig.height));
+                    onChange({ ...config, height: v });
+                    setDraftDims(d => ({ ...d, h: undefined }));
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                  className="h-7 text-xs font-mono text-right flex-1"
+                />
+                <span className="text-xs text-muted-foreground/40 shrink-0">px</span>
+              </div>
+              {safeConfig.imageData && (
+                <button
+                  onClick={() => {
+                    const iw = safeConfig.imageData!.width;
+                    const ih = safeConfig.imageData!.height;
+                    const ratio = iw / ih;
+                    const maxDim = Math.max(safeConfig.width, safeConfig.height, 400);
+                    let w: number, h: number;
+                    if (ratio >= 1) { w = maxDim; h = Math.round(maxDim / ratio); }
+                    else { h = maxDim; w = Math.round(maxDim * ratio); }
+                    onChange({ ...config, width: Math.round(w / 2) * 2, height: Math.round(h / 2) * 2 });
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                >
+                  {tx.canvas.matchRatio}
+                </button>
+              )}
             </div>
             <div>
               <div className="flex items-center justify-between">

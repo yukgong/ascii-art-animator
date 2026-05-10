@@ -16,12 +16,13 @@ const KO = {
   },
   image: {
     upload: '클릭하거나 드래그하여 업로드',
-    uploadSub: 'JPG, PNG, GIF 지원',
+    uploadSub: 'JPG, PNG, GIF, MP4, WebM, MOV 지원',
     replace: '이미지 교체',
     importRes: '가져오기 해상도',
     importResTip: '이미지를 가져올 때 내부 처리 해상도입니다. 높을수록 세밀하지만 느려집니다. 변경 후 이미지를 다시 업로드해야 적용됩니다.',
     fast: '50 빠름',
     detailed: '300 세밀',
+    videoLoading: '동영상 프레임 추출 중…',
   },
   adjust: {
     original: '원본',
@@ -58,7 +59,8 @@ const KO = {
   },
   canvas: {
     size: '캔버스 크기',
-    sizeTip: '출력 캔버스의 픽셀 크기입니다 (가로 = 세로).',
+    sizeTip: '출력 캔버스의 픽셀 크기입니다. 가로(W)와 세로(H)를 독립적으로 조정할 수 있습니다.',
+    matchRatio: '이미지 비율에 맞추기',
     cellSize: '셀 크기',
     cellSizeTip: '각 ASCII 문자가 차지하는 픽셀 크기입니다. 작을수록 해상도가 높아지고 문자가 많아집니다.',
     fontSize: '폰트 크기',
@@ -118,6 +120,7 @@ const KO = {
     settingsImportError: '설정 파일을 읽을 수 없습니다.',
     gifLoadError: (msg: string) => `GIF 로드 실패: ${msg}`,
     imageLoadError: (msg: string) => `이미지 로드 실패: ${msg}`,
+    videoLoadError: (msg: string) => `동영상 로드 실패: ${msg}`,
   },
 }
 
@@ -138,12 +141,13 @@ const EN = {
   },
   image: {
     upload: 'Click or drag to upload',
-    uploadSub: 'JPG, PNG, GIF supported',
+    uploadSub: 'JPG, PNG, GIF, MP4, WebM, MOV supported',
     replace: 'Replace Image',
     importRes: 'Import Resolution',
     importResTip: 'Internal processing resolution when importing an image. Higher values produce more detail but are slower. Requires re-uploading the image after changing.',
     fast: '50 Fast',
     detailed: '300 Detailed',
+    videoLoading: 'Extracting video frames…',
   },
   adjust: {
     original: 'Original',
@@ -180,7 +184,8 @@ const EN = {
   },
   canvas: {
     size: 'Canvas Size',
-    sizeTip: 'Pixel size of the output canvas (width = height).',
+    sizeTip: 'Pixel dimensions of the output canvas. Adjust W and H independently.',
+    matchRatio: 'Match image ratio',
     cellSize: 'Cell Size',
     cellSizeTip: 'Pixel size occupied by each ASCII character. Smaller values increase resolution and character count.',
     fontSize: 'Font Size',
@@ -240,6 +245,7 @@ const EN = {
     settingsImportError: 'Could not read settings file.',
     gifLoadError: (msg: string) => `GIF load failed: ${msg}`,
     imageLoadError: (msg: string) => `Image load failed: ${msg}`,
+    videoLoadError: (msg: string) => `Video load failed: ${msg}`,
   },
 }
 
