@@ -6,6 +6,7 @@ import AsciiControlPanel from '@/components/animator/AsciiControlPanel';
 import {
   loadImageForAscii,
   loadGifForAscii,
+  loadVideoForAscii,
   generateFrame,
   preprocessImage,
   type AsciiConfig,
@@ -75,7 +76,9 @@ export default function BugsAnimatorPage() {
   const [playing, setPlaying] = React.useState(true);
   const [isRecording, setIsRecording] = React.useState(false);
   const [recordingProgress, setRecordingProgress] = React.useState(0);
-  const [recordingType, setRecordingType] = React.useState<'gif' | 'webm'>('gif');
+  const [recordingType, setRecordingType] = React.useState<'gif' | 'webm' | 'mp4'>('gif');
+  const [videoLoadingProgress, setVideoLoadingProgress] = React.useState(0);
+  const [isLoadingVideo, setIsLoadingVideo] = React.useState(false);
   const [uploadedImageBase64, setUploadedImageBase64] = React.useState<string | null>(null);
   const [isUploadedGif, setIsUploadedGif] = React.useState<boolean>(false);
   const [lang, setLang] = React.useState<Lang>('en');
@@ -95,42 +98,108 @@ export default function BugsAnimatorPage() {
       .catch(() => {});
   }, []);
 
+  const isVideoFile = (file: File) =>
+    file.type.startsWith('video/') ||
+    /\.(mp4|webm|mov|avi|mkv|ogv|m4v)$/i.test(file.name);
+
   const processFile = async (file: File) => {
     try {
       const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
-      const resolution = config.importResolution ?? 150;
-      const aspectRatio = config.width / config.height;
+      const isVideo = isVideoFile(file);
 
-      let cols, rows;
-      if (aspectRatio > 1) {
-        cols = resolution;
-        rows = Math.floor(resolution / aspectRatio);
-      } else {
-        rows = resolution;
-        cols = Math.floor(resolution * aspectRatio);
+      // Detect natural dimensions for canvas auto-sizing
+      let naturalWidth = 0, naturalHeight = 0;
+      const objectUrl = URL.createObjectURL(file);
+      await new Promise<void>((res) => {
+        if (isVideo) {
+          const v = document.createElement('video');
+          v.onloadedmetadata = () => { naturalWidth = v.videoWidth; naturalHeight = v.videoHeight; res(); };
+          v.onerror = () => res();
+          v.src = objectUrl;
+        } else {
+          const img = new Image();
+          img.onload = () => { naturalWidth = img.naturalWidth; naturalHeight = img.naturalHeight; res(); };
+          img.onerror = () => res();
+          img.src = objectUrl;
+        }
+      });
+      URL.revokeObjectURL(objectUrl);
+
+      // Compute canvas dimensions from natural aspect ratio, max 1200px per side
+      const MAX_DIM = 1200;
+      let newWidth = config.width;
+      let newHeight = config.height;
+      if (naturalWidth > 0 && naturalHeight > 0) {
+        const aspect = naturalWidth / naturalHeight;
+        if (aspect >= 1) {
+          newWidth = Math.min(naturalWidth, MAX_DIM);
+          newHeight = Math.round(newWidth / aspect);
+        } else {
+          newHeight = Math.min(naturalHeight, MAX_DIM);
+          newWidth = Math.round(newHeight * aspect);
+        }
+        newWidth = Math.round(newWidth / 2) * 2;
+        newHeight = Math.round(newHeight / 2) * 2;
       }
 
-      setIsUploadedGif(isGif);
+      // Grid resolution based on new canvas aspect ratio
+      const resolution = config.importResolution ?? 150;
+      const newAspect = newWidth / newHeight;
+      let cols, rows;
+      if (newAspect >= 1) {
+        cols = resolution;
+        rows = Math.max(1, Math.round(resolution / newAspect));
+      } else {
+        rows = resolution;
+        cols = Math.max(1, Math.round(resolution * newAspect));
+      }
 
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => { resolve(e.target?.result as string); };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      setUploadedImageBase64(base64);
+      setIsUploadedGif(isGif || isVideo);
 
-      if (isGif) {
+      if (!isVideo) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => { resolve(e.target?.result as string); };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        setUploadedImageBase64(base64);
+      } else {
+        setUploadedImageBase64(null);
+      }
+
+      if (isVideo) {
+        setIsLoadingVideo(true);
+        setVideoLoadingProgress(0);
         try {
-          const gifPromise = loadGifForAscii(file, cols, rows);
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('GIF parsing timeout (30s)')), 30000)
-          );
-
-          const { frames, delay } = await Promise.race([gifPromise, timeoutPromise]) as Awaited<ReturnType<typeof loadGifForAscii>>;
-
+          const { frames, delay } = await Promise.race([
+            loadVideoForAscii(file, cols, rows, 50, (p) => setVideoLoadingProgress(p)),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Video parsing timeout (60s)')), 60000)),
+          ]) as Awaited<ReturnType<typeof loadVideoForAscii>>;
           setConfig((prev) => ({
             ...prev,
+            width: newWidth,
+            height: newHeight,
+            imageData: frames[0],
+            imageFrames: frames,
+            gifFrameDelay: delay,
+          }));
+        } catch (videoError) {
+          toast.error(tx.toast.videoLoadError(videoError instanceof Error ? videoError.message : 'Unknown error'));
+        } finally {
+          setIsLoadingVideo(false);
+          setVideoLoadingProgress(0);
+        }
+      } else if (isGif) {
+        try {
+          const { frames, delay } = await Promise.race([
+            loadGifForAscii(file, cols, rows),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('GIF parsing timeout (30s)')), 30000)),
+          ]) as Awaited<ReturnType<typeof loadGifForAscii>>;
+          setConfig((prev) => ({
+            ...prev,
+            width: newWidth,
+            height: newHeight,
             imageData: frames[0],
             imageFrames: frames,
             gifFrameDelay: delay,
@@ -138,11 +207,11 @@ export default function BugsAnimatorPage() {
         } catch (gifError) {
           toast.error(tx.toast.gifLoadError(gifError instanceof Error ? gifError.message : 'Unknown error'));
           const imageData = await loadImageForAscii(file, cols, rows);
-          setConfig((prev) => ({ ...prev, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
+          setConfig((prev) => ({ ...prev, width: newWidth, height: newHeight, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
         }
       } else {
         const imageData = await loadImageForAscii(file, cols, rows);
-        setConfig((prev) => ({ ...prev, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
+        setConfig((prev) => ({ ...prev, width: newWidth, height: newHeight, imageData, imageFrames: undefined, gifFrameDelay: undefined }));
       }
     } catch (error) {
       toast.error(tx.toast.imageLoadError(error instanceof Error ? error.message : 'Unknown error'));
@@ -152,7 +221,8 @@ export default function BugsAnimatorPage() {
   const handleImageUpload = async (file: File) => {
     const fileSizeMB = file.size / (1024 * 1024);
     const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
-    const maxSize = isGif ? 3 : 5;
+    const isVideo = isVideoFile(file);
+    const maxSize = isVideo ? 200 : isGif ? 3 : 5;
 
     if (fileSizeMB > maxSize) {
       setFileSizeDialog({ open: true, file, mb: fileSizeMB.toFixed(1), rec: maxSize });
@@ -401,9 +471,125 @@ export default function BugsAnimatorPage() {
     gif.render();
   };
 
+  const handleRecordMp4 = async () => {
+    if (isRecording) return;
+
+    if (typeof VideoEncoder === 'undefined') {
+      toast.error('MP4 export requires a modern browser with WebCodecs support (Chrome/Edge/Safari 16.4+).');
+      return;
+    }
+
+    setIsRecording(true);
+    setRecordingProgress(0);
+
+    const scale = config.gifExportScale ?? 1.0;
+    const exportWidth = Math.floor(config.width * scale);
+    const exportHeight = Math.floor(config.height * scale);
+
+    const isAnimated = config.imageFrames && config.imageFrames.length > 1;
+    const frameCount = isAnimated ? config.imageFrames!.length : 30;
+    const frameDelay = config.gifFrameDelay ?? 100;
+    const fps = Math.round(1000 / frameDelay) || config.animationSpeed;
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = config.width;
+    offscreen.height = config.height;
+    const ctx = offscreen.getContext('2d');
+    if (!ctx) { setIsRecording(false); return; }
+
+    const { Muxer, ArrayBufferTarget } = await import('mp4-muxer');
+    const muxer = new Muxer({
+      target: new ArrayBufferTarget(),
+      video: { codec: 'avc', width: exportWidth, height: exportHeight },
+      fastStart: 'in-memory',
+    });
+
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => { toast.error(`Encoding error: ${e.message}`); },
+    });
+
+    encoder.configure({
+      codec: 'avc1.420033',
+      width: exportWidth,
+      height: exportHeight,
+      bitrate: 2_500_000,
+      framerate: fps,
+    });
+
+    const cols = Math.floor(config.width / config.cellSize);
+    const rows = Math.floor(config.height / config.cellSize);
+    const actualCellSize = config.cellSize + config.spacing;
+    const fontSize = config.fontSize ?? config.cellSize * 0.8;
+
+    const scaledCanvas = document.createElement('canvas');
+    scaledCanvas.width = exportWidth;
+    scaledCanvas.height = exportHeight;
+    const scaledCtx = scaledCanvas.getContext('2d');
+    if (!scaledCtx) { setIsRecording(false); return; }
+
+    const frameUsed = isAnimated ? frameCount : 1;
+    for (let i = 0; i < frameCount; i++) {
+      const rawFrame = isAnimated ? config.imageFrames![i % frameUsed] : config.imageData;
+      const imageData = (rawFrame && rawFrame.width > 0 && config.preprocessing.showEffect)
+        ? preprocessImage(rawFrame, config.preprocessing)
+        : rawFrame;
+
+      const frame = generateFrame({
+        ...config,
+        imageData,
+        preprocessing: { ...config.preprocessing, showEffect: false },
+      });
+
+      ctx.fillStyle = config.canvasBackgroundColor || '#000000';
+      ctx.fillRect(0, 0, config.width, config.height);
+      ctx.font = `${fontSize}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const char = frame.grid[row][col];
+          if (char === ' ') continue;
+          ctx.fillStyle = frame.colors[row][col];
+          ctx.fillText(char, col * actualCellSize + actualCellSize / 2, row * actualCellSize + actualCellSize / 2);
+        }
+      }
+
+      scaledCtx.drawImage(offscreen, 0, 0, exportWidth, exportHeight);
+
+      const timestamp = Math.round((i / fps) * 1_000_000);
+      const videoFrame = new VideoFrame(scaledCanvas, { timestamp });
+      encoder.encode(videoFrame, { keyFrame: i % 30 === 0 });
+      videoFrame.close();
+
+      setRecordingProgress(Math.round(((i + 1) / frameCount) * 90));
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    await encoder.flush();
+    muxer.finalize();
+
+    setRecordingProgress(100);
+
+    const { buffer } = muxer.target;
+    const blob = new Blob([buffer], { type: 'video/mp4' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ascii-art-${Date.now()}.mp4`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    setIsRecording(false);
+    setRecordingProgress(0);
+  };
+
   const handleRecord = () => {
     if (recordingType === 'gif') {
       handleRecordGif();
+    } else if (recordingType === 'mp4') {
+      handleRecordMp4();
     } else {
       handleRecordWebM();
     }
@@ -1449,9 +1635,7 @@ Made with 🎨 by ASCII Art Animator
       {/* Top Header */}
       <header className="shrink-0 bg-card border-b px-5 h-14 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-foreground flex items-center justify-center shrink-0">
-            <span className="text-background text-xs font-mono font-bold leading-none">A</span>
-          </div>
+          <img src="/logo.png" alt="ASCII Art Animator" className="w-7 h-7 shrink-0 object-cover" />
           <span className="font-semibold text-sm tracking-tight">ASCII Art Animator</span>
         </div>
         <div className="flex items-center gap-1">
@@ -1514,28 +1698,45 @@ Made with 🎨 by ASCII Art Animator
                   {/* Dropzone */}
                   <label
                     className={cn(
-                      'aspect-square w-full border-2 border-dashed border-border cursor-pointer flex flex-col items-center justify-center gap-2 transition-colors',
+                      'aspect-square w-full border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 transition-colors',
+                      isLoadingVideo ? 'cursor-default' : 'cursor-pointer',
                       isDragging ? 'bg-accent border-foreground' : 'hover:bg-accent/50'
                     )}
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragOver={(e) => { if (!isLoadingVideo) { e.preventDefault(); setIsDragging(true); } }}
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={(e) => {
                       e.preventDefault();
                       setIsDragging(false);
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) handleImageUpload(file);
+                      if (!isLoadingVideo) {
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) handleImageUpload(file);
+                      }
                     }}
                   >
-                    <div className="flex flex-col items-center gap-1 select-none">
-                      <span className="text-sm font-medium text-muted-foreground">{tx.image.upload}</span>
-                      <span className="text-xs text-muted-foreground/50">{tx.image.uploadSub}</span>
-                    </div>
+                    {isLoadingVideo ? (
+                      <div className="flex flex-col items-center gap-3 select-none px-8 w-full">
+                        <span className="text-sm font-medium text-muted-foreground">{tx.image.videoLoading}</span>
+                        <div className="w-full max-w-xs bg-muted rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="h-full bg-foreground transition-all duration-150"
+                            style={{ width: `${videoLoadingProgress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground/60 font-mono">{videoLoadingProgress}%</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 select-none">
+                        <span className="text-sm font-medium text-muted-foreground">{tx.image.upload}</span>
+                        <span className="text-xs text-muted-foreground/50">{tx.image.uploadSub}</span>
+                      </div>
+                    )}
                     <input
                       ref={mainUploadRef}
                       type="file"
-                      accept="image/*"
+                      accept="image/*,video/*,.gif,.mp4,.webm,.mov,.avi,.mkv"
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }}
                       className="hidden"
+                      disabled={isLoadingVideo}
                     />
                   </label>
 
@@ -1566,7 +1767,7 @@ Made with 🎨 by ASCII Art Animator
                       <span className="text-xs text-muted-foreground whitespace-nowrap">{tx.image.replace}</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,video/*,.gif,.mp4,.webm,.mov,.avi,.mkv"
                         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }}
                         className="hidden"
                       />
@@ -1588,7 +1789,7 @@ Made with 🎨 by ASCII Art Animator
                 {/* Canvas Card */}
                 <Card className="w-full max-w-[720px] shadow-sm">
                   <CardContent className="p-3">
-                    <div className="aspect-square w-full overflow-hidden">
+                    <div className="w-full overflow-hidden" style={{ aspectRatio: `${config.width} / ${config.height}` }}>
                       <AsciiCanvas config={config} playing={playing} />
                     </div>
                   </CardContent>
@@ -1634,7 +1835,7 @@ Made with 🎨 by ASCII Art Animator
                       <div className="flex items-center gap-2 ml-auto">
                         <Select
                           value={recordingType}
-                          onValueChange={(v) => setRecordingType(v as 'gif' | 'webm')}
+                          onValueChange={(v) => setRecordingType(v as 'gif' | 'webm' | 'mp4')}
                           disabled={isRecording}
                         >
                           <SelectTrigger className="w-20 h-8 text-xs">
@@ -1643,6 +1844,7 @@ Made with 🎨 by ASCII Art Animator
                           <SelectContent>
                             <SelectItem value="gif">GIF</SelectItem>
                             <SelectItem value="webm">WebM</SelectItem>
+                            <SelectItem value="mp4">MP4</SelectItem>
                           </SelectContent>
                         </Select>
                         <Button
