@@ -4,6 +4,7 @@ import React from 'react';
 import {
   generateFrame,
   preprocessImage,
+  drawAsciiFrame,
   type AsciiConfig,
 } from '@/lib/animations/ascii-engine';
 
@@ -19,26 +20,24 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
   const lastGifFrameTimeRef = React.useRef<number>(0);
   const gifFrameIndexRef = React.useRef<number>(0);
   const gifFrameDirectionRef = React.useRef<1 | -1>(1); // For pingpong mode
+  const animTickRef = React.useRef<number>(0);
   const configRef = React.useRef(config);
-  // Keep config ref updated for animation loop
+  const configVersionRef = React.useRef(0);
+  const lastDrawnVersionRef = React.useRef(-1);
+
   React.useEffect(() => {
     configRef.current = config;
+    configVersionRef.current += 1;
   }, [config]);
 
 
-  // Draw single frame (for when not animating)
   const drawFrame = React.useCallback(
-    (ctx: CanvasRenderingContext2D, cfg: AsciiConfig, gifFrameIndex?: number) => {
-      const cols = Math.floor(cfg.width / cfg.cellSize);
-      const rows = Math.floor(cfg.height / cfg.cellSize);
-
-      // Get current image data (single image or GIF frame)
+    (ctx: CanvasRenderingContext2D, cfg: AsciiConfig, gifFrameIndex: number = 0, animTick: number = 0) => {
       let currentImageData = cfg.imageData;
-      if (cfg.imageFrames && cfg.imageFrames.length > 0 && gifFrameIndex !== undefined) {
+      if (cfg.imageFrames && cfg.imageFrames.length > 0) {
         currentImageData = cfg.imageFrames[gifFrameIndex % cfg.imageFrames.length];
       }
 
-      // Validate image data before preprocessing
       let processedImage = undefined;
       if (currentImageData && currentImageData.width > 0 && currentImageData.height > 0) {
         processedImage = cfg.preprocessing.showEffect
@@ -46,64 +45,18 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
           : currentImageData;
       }
 
-      const configWithProcessedImage: AsciiConfig = {
+      const frame = generateFrame({
         ...cfg,
         imageData: processedImage,
-        preprocessing: {
-          ...cfg.preprocessing,
-          showEffect: false, // Already processed, don't process again
-        },
-      };
+        preprocessing: { ...cfg.preprocessing, showEffect: false },
+      });
 
-      // Generate frame
-      const frame = generateFrame(configWithProcessedImage);
-
-      // Clear canvas with configured background color
-      ctx.fillStyle = cfg.canvasBackgroundColor || '#000000';
-      ctx.fillRect(0, 0, cfg.width, cfg.height);
-
-      // Calculate actual spacing between characters
-      // spacing: -10 (tighter) to 0 (normal) to +10 (wider)
-      const actualCellSize = cfg.cellSize + cfg.spacing;
-
-      // Calculate font sizes
-      const backgroundFontSize = cfg.fontSize ?? cfg.cellSize * 0.8;
-
-      // Draw background first
-      ctx.font = `${backgroundFontSize}px monospace`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const char = frame.grid[row][col];
-          if (char === ' ') continue;
-
-          // Apply spacing to character position
-          const x = col * actualCellSize + actualCellSize / 2;
-          const y = row * actualCellSize + actualCellSize / 2;
-
-          ctx.fillStyle = frame.colors[row][col];
-          ctx.fillText(char, x, y);
-        }
-      }
-
+      drawAsciiFrame(ctx, frame, cfg, animTick);
     },
     []
   );
 
-  // Draw static frame when config changes (and not playing)
-  React.useEffect(() => {
-    if (playing || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    drawFrame(ctx, config, gifFrameIndexRef.current);
-  }, [config, playing, drawFrame]);
-
-  // Animation loop (always runs, updates GIF frames when playing)
+  // Single animation loop — sole owner of all canvas draws
   React.useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -119,21 +72,25 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
       const currentConfig = configRef.current;
       const frameInterval = 1000 / currentConfig.animationSpeed;
 
-      // Throttle to target FPS
-      if (timestamp - lastFrameTimeRef.current < frameInterval) {
+      const configChanged = configVersionRef.current !== lastDrawnVersionRef.current;
+      const intervalElapsed = timestamp - lastFrameTimeRef.current >= frameInterval;
+
+      if (!configChanged && !intervalElapsed) {
         animationFrameRef.current = requestAnimationFrame(animate);
         return;
       }
 
-      lastFrameTimeRef.current = timestamp;
+      if (intervalElapsed) {
+        lastFrameTimeRef.current = timestamp;
+        animTickRef.current += 1;
 
-      // Update GIF frame if applicable (advance every animation frame, ignore GIF delay)
-      if (currentConfig.imageFrames && currentConfig.imageFrames.length > 1 && playing) {
-        gifFrameIndexRef.current = (gifFrameIndexRef.current + 1) % currentConfig.imageFrames.length;
+        if (currentConfig.imageFrames && currentConfig.imageFrames.length > 1 && playing) {
+          gifFrameIndexRef.current = (gifFrameIndexRef.current + 1) % currentConfig.imageFrames.length;
+        }
       }
 
-      // Always draw the current frame (with GIF frame index)
-      drawFrame(ctx, currentConfig, gifFrameIndexRef.current);
+      lastDrawnVersionRef.current = configVersionRef.current;
+      drawFrame(ctx, currentConfig, gifFrameIndexRef.current, animTickRef.current);
 
       animationFrameRef.current = requestAnimationFrame(animate);
     };

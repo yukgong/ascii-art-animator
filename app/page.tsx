@@ -9,6 +9,8 @@ import {
   loadVideoForAscii,
   generateFrame,
   preprocessImage,
+  drawAsciiFrame,
+  getAnimationFrameCount,
   type AsciiConfig,
 } from '@/lib/animations/ascii-engine';
 // @ts-ignore - gif.js doesn't have proper ESM support
@@ -387,10 +389,12 @@ export default function BugsAnimatorPage() {
     const exportHeight = Math.floor(config.height * scale);
 
     const isAnimated = config.imageFrames && config.imageFrames.length > 1;
-    const frameCount = isAnimated ? config.imageFrames!.length : 1;
-    const frameDelay = config.gifFrameDelay ?? 100;
+    const hasEffect = (config.animationType ?? 'none') !== 'none';
+    const frameCount = isAnimated
+      ? config.imageFrames!.length
+      : hasEffect ? getAnimationFrameCount(config) : 1;
+    const frameDelay = Math.round(1000 / config.animationSpeed);
 
-    // Offscreen canvas — renders ASCII art directly, no live canvas dependency
     const offscreen = document.createElement('canvas');
     offscreen.width = config.width;
     offscreen.height = config.height;
@@ -420,11 +424,6 @@ export default function BugsAnimatorPage() {
       setRecordingProgress(Math.round(50 + progress * 50));
     });
 
-    const cols = Math.floor(config.width / config.cellSize);
-    const rows = Math.floor(config.height / config.cellSize);
-    const actualCellSize = config.cellSize + config.spacing;
-    const fontSize = config.fontSize ?? config.cellSize * 0.8;
-
     for (let i = 0; i < frameCount; i++) {
       const rawFrame = isAnimated ? config.imageFrames![i] : config.imageData;
       const imageData = (rawFrame && rawFrame.width > 0 && config.preprocessing.showEffect)
@@ -437,20 +436,7 @@ export default function BugsAnimatorPage() {
         preprocessing: { ...config.preprocessing, showEffect: false },
       });
 
-      ctx.fillStyle = config.canvasBackgroundColor || '#000000';
-      ctx.fillRect(0, 0, config.width, config.height);
-      ctx.font = `${fontSize}px monospace`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const char = frame.grid[row][col];
-          if (char === ' ') continue;
-          ctx.fillStyle = frame.colors[row][col];
-          ctx.fillText(char, col * actualCellSize + actualCellSize / 2, row * actualCellSize + actualCellSize / 2);
-        }
-      }
+      drawAsciiFrame(ctx, frame, config, i);
 
       if (scale < 1) {
         const scaled = document.createElement('canvas');
@@ -463,8 +449,6 @@ export default function BugsAnimatorPage() {
       }
 
       setRecordingProgress(Math.round(((i + 1) / frameCount) * 50));
-
-      // Yield to UI between frames so progress bar updates
       await new Promise(r => setTimeout(r, 0));
     }
 
@@ -487,9 +471,11 @@ export default function BugsAnimatorPage() {
     const exportHeight = Math.floor(config.height * scale);
 
     const isAnimated = config.imageFrames && config.imageFrames.length > 1;
-    const frameCount = isAnimated ? config.imageFrames!.length : 30;
-    const frameDelay = config.gifFrameDelay ?? 100;
-    const fps = Math.round(1000 / frameDelay) || config.animationSpeed;
+    const hasEffect = (config.animationType ?? 'none') !== 'none';
+    const frameCount = isAnimated
+      ? config.imageFrames!.length
+      : hasEffect ? getAnimationFrameCount(config) : 30;
+    const fps = config.animationSpeed;
 
     const offscreen = document.createElement('canvas');
     offscreen.width = config.width;
@@ -517,20 +503,14 @@ export default function BugsAnimatorPage() {
       framerate: fps,
     });
 
-    const cols = Math.floor(config.width / config.cellSize);
-    const rows = Math.floor(config.height / config.cellSize);
-    const actualCellSize = config.cellSize + config.spacing;
-    const fontSize = config.fontSize ?? config.cellSize * 0.8;
-
     const scaledCanvas = document.createElement('canvas');
     scaledCanvas.width = exportWidth;
     scaledCanvas.height = exportHeight;
     const scaledCtx = scaledCanvas.getContext('2d');
     if (!scaledCtx) { setIsRecording(false); return; }
 
-    const frameUsed = isAnimated ? frameCount : 1;
     for (let i = 0; i < frameCount; i++) {
-      const rawFrame = isAnimated ? config.imageFrames![i % frameUsed] : config.imageData;
+      const rawFrame = isAnimated ? config.imageFrames![i % config.imageFrames!.length] : config.imageData;
       const imageData = (rawFrame && rawFrame.width > 0 && config.preprocessing.showEffect)
         ? preprocessImage(rawFrame, config.preprocessing)
         : rawFrame;
@@ -541,20 +521,7 @@ export default function BugsAnimatorPage() {
         preprocessing: { ...config.preprocessing, showEffect: false },
       });
 
-      ctx.fillStyle = config.canvasBackgroundColor || '#000000';
-      ctx.fillRect(0, 0, config.width, config.height);
-      ctx.font = `${fontSize}px monospace`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const char = frame.grid[row][col];
-          if (char === ' ') continue;
-          ctx.fillStyle = frame.colors[row][col];
-          ctx.fillText(char, col * actualCellSize + actualCellSize / 2, row * actualCellSize + actualCellSize / 2);
-        }
-      }
+      drawAsciiFrame(ctx, frame, config, i);
 
       scaledCtx.drawImage(offscreen, 0, 0, exportWidth, exportHeight);
 

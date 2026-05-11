@@ -5,6 +5,7 @@ import {
   DEFAULT_BRIGHTNESS_LEVELS,
   preprocessImage,
   type AsciiConfig,
+  type AnimationType,
   type BackgroundCharacter,
   type BrightnessLevel,
 } from '@/lib/animations/ascii-engine';
@@ -426,6 +427,48 @@ export default function AsciiControlPanel({
               </div>
               <Slider value={safeConfig.density * 100} onValueChange={(v) => updateConfig('density', (v as number) / 100)} min={0} max={100} step={1} />
             </div>
+
+            <Separator />
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{tx.animation.effectSection}</p>
+
+            <div>
+              <div className="flex items-center mb-2">
+                <Label className="text-xs text-muted-foreground">{tx.animation.effectType}</Label>
+                <InfoTooltip text={tx.animation.effectTypeTip} />
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(['none', 'glitch', 'wave'] as AnimationType[]).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => updateConfig('animationType', type)}
+                    className={`p-2 rounded-none text-xs font-mono transition-colors border ${
+                      (safeConfig.animationType ?? 'none') === type
+                        ? 'bg-foreground text-background border-foreground'
+                        : 'bg-background text-foreground border-border hover:bg-accent'
+                    }`}
+                  >
+                    {tx.animation.effectLabels[type]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(safeConfig.animationType ?? 'none') !== 'none' && (
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Label className="text-xs text-muted-foreground">{tx.animation.intensity}</Label>
+                    <InfoTooltip text={tx.animation.intensityTip} />
+                  </div>
+                  <span className="text-xs font-mono tabular-nums">{safeConfig.animationIntensity ?? 50}%</span>
+                </div>
+                <Slider
+                  value={safeConfig.animationIntensity ?? 50}
+                  onValueChange={(v) => updateConfig('animationIntensity', v as number)}
+                  min={0} max={100} step={1}
+                />
+              </div>
+            )}
           </div>
         </AccordionContent>
       </AccordionItem>

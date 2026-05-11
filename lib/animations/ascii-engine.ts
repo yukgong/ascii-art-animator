@@ -5,6 +5,8 @@
 
 export type BackgroundCharacter = '-' | '=' | '≡' | '∙' | '·' | '‧' | '•' | '∘' | '*' | '※' | '✱' | '■' | '#' | '@';
 
+export type AnimationType = 'none' | 'glitch' | 'wave';
+
 export interface BrightnessLevel {
   threshold: number; // 0-255: brightness threshold
   char: string; // Any character
@@ -67,6 +69,9 @@ export interface AsciiConfig {
   imageOffsetY?: number; // -100 to 100: vertical offset as percentage of canvas height
   // GIF loop settings
   loopMode?: 'normal' | 'pingpong'; // normal: 1→2→3→1, pingpong: 1→2→3→2→1
+  // Animation effect
+  animationType?: AnimationType;
+  animationIntensity?: number; // 0-100
 }
 
 export interface AsciiFrame {
@@ -255,6 +260,97 @@ export function generateFrame(config: AsciiConfig): AsciiFrame {
  */
 export function frameToText(frame: AsciiFrame): string {
   return frame.grid.map((row) => row.join('')).join('\n');
+}
+
+const GLITCH_CHARS = ['▓', '░', '▒', '█', '▄', '▀', '▌', '▐', '╳', '╬'];
+
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
+}
+
+/**
+ * Returns the number of frames needed to complete one animation cycle for a static image.
+ * GIF/video sources use their own frame count.
+ */
+export function getAnimationFrameCount(config: AsciiConfig): number {
+  if (!config.animationType || config.animationType === 'none') return 1;
+  // wave: one full horizontal cycle (2π / step)
+  if (config.animationType === 'wave') return Math.ceil((2 * Math.PI) / 0.18);
+  // glitch: 6 distinct glitch states × 4 ticks each
+  return 24;
+}
+
+/**
+ * Draws an AsciiFrame onto a canvas context, applying animation effects based on animTick.
+ * Single source of truth for rendering — used by both the live canvas and all export handlers.
+ */
+export function drawAsciiFrame(
+  ctx: CanvasRenderingContext2D,
+  frame: AsciiFrame,
+  config: AsciiConfig,
+  animTick: number = 0
+): void {
+  const cols = Math.floor(config.width / config.cellSize);
+  const rows = Math.floor(config.height / config.cellSize);
+  const actualCellSize = config.cellSize + config.spacing;
+  const fontSize = config.fontSize ?? config.cellSize * 0.8;
+
+  ctx.fillStyle = config.canvasBackgroundColor || '#000000';
+  ctx.fillRect(0, 0, config.width, config.height);
+  ctx.font = `${fontSize}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const animType = config.animationType ?? 'none';
+  const animIntensity = (config.animationIntensity ?? 50) / 100;
+
+  const glitchRowShifts: number[] = [];
+  const glitchCharSwap: boolean[] = [];
+  if (animType === 'glitch') {
+    const glitchSeed = Math.floor(animTick / 4);
+    for (let r = 0; r < rows; r++) {
+      const rand1 = seededRandom(glitchSeed * 997 + r);
+      if (rand1 < animIntensity * 0.35) {
+        const rand2 = seededRandom(glitchSeed * 1999 + r);
+        glitchRowShifts[r] = (rand2 - 0.5) * animIntensity * actualCellSize * 10;
+        glitchCharSwap[r] = seededRandom(glitchSeed * 3001 + r) < 0.4;
+      } else {
+        glitchRowShifts[r] = 0;
+        glitchCharSwap[r] = false;
+      }
+    }
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, config.width, config.height);
+  ctx.clip();
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      let char = frame.grid[row][col];
+      if (char === ' ') continue;
+
+      let x = col * actualCellSize + actualCellSize / 2;
+      const y = row * actualCellSize + actualCellSize / 2;
+
+      if (animType === 'glitch' && glitchRowShifts[row] !== 0) {
+        x += glitchRowShifts[row];
+        if (glitchCharSwap[row] && seededRandom(Math.floor(animTick / 4) * 5003 + row * 101 + col) < 0.3) {
+          const idx = Math.floor(seededRandom(Math.floor(animTick / 4) * 7001 + row * 53 + col) * GLITCH_CHARS.length);
+          char = GLITCH_CHARS[idx];
+        }
+      } else if (animType === 'wave') {
+        x += Math.sin(row * 0.35 + animTick * 0.18) * (animIntensity * actualCellSize * 3);
+      }
+
+      ctx.fillStyle = frame.colors[row][col];
+      ctx.fillText(char, x, y);
+    }
+  }
+
+  ctx.restore();
 }
 
 /**
