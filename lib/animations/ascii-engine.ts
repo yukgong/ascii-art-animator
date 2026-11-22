@@ -5,7 +5,10 @@
 
 export type BackgroundCharacter = '-' | '=' | '≡' | '∙' | '·' | '‧' | '•' | '∘' | '*' | '※' | '✱' | '■' | '#' | '@';
 
-export type AnimationType = 'none' | 'glitch' | 'wave';
+export type AnimationType = 'none' | 'glitch' | 'wave' | 'dither';
+
+// Ticks for one full dither sweep (0 → peak → 0)
+const DITHER_SWEEP_TICKS = 40;
 
 export interface BrightnessLevel {
   threshold: number; // 0-255: brightness threshold
@@ -155,9 +158,23 @@ function applyDithering(
 }
 
 /**
- * Generate ASCII frame from image data
+ * Dithering strength (0-100) for the 'dither' animation at a given tick.
+ * Eases from 0 up to the effect intensity and back, like dragging the
+ * Dithering Strength slider back and forth. Loops seamlessly every DITHER_SWEEP_TICKS.
+ *
+ * Dither sweep effect by Riddhi Kasralikar
  */
-export function generateFrame(config: AsciiConfig): AsciiFrame {
+export function getAnimatedDitheringStrength(config: AsciiConfig, animTick: number): number {
+  const peak = config.animationIntensity ?? 50;
+  const phase = (animTick % DITHER_SWEEP_TICKS) / DITHER_SWEEP_TICKS;
+  return peak * (1 - Math.cos(2 * Math.PI * phase)) / 2;
+}
+
+/**
+ * Generate ASCII frame from image data.
+ * animTick only matters for effects that change the character grid itself ('dither').
+ */
+export function generateFrame(config: AsciiConfig, animTick: number = 0): AsciiFrame {
   // Calculate grid dimensions based on cellSize (pattern count stays the same)
   const cols = Math.floor(config.width / config.cellSize);
   const rows = Math.floor(config.height / config.cellSize);
@@ -208,9 +225,13 @@ export function generateFrame(config: AsciiConfig): AsciiFrame {
       }
     }
 
-    // Apply dithering if enabled
-    if (config.preprocessing.dithering && config.useBrightnessMapping && config.brightnessLevels.length > 0) {
-      brightnessMap = applyDithering(brightnessMap, config.brightnessLevels, config.preprocessing.ditheringStrength);
+    // Apply dithering if enabled (the 'dither' animation forces it on and drives the strength)
+    const ditherAnimated = config.animationType === 'dither';
+    if ((config.preprocessing.dithering || ditherAnimated) && config.useBrightnessMapping && config.brightnessLevels.length > 0) {
+      const strength = ditherAnimated
+        ? getAnimatedDitheringStrength(config, animTick)
+        : config.preprocessing.ditheringStrength;
+      brightnessMap = applyDithering(brightnessMap, config.brightnessLevels, strength);
     }
   }
 
@@ -277,6 +298,8 @@ export function getAnimationFrameCount(config: AsciiConfig): number {
   if (!config.animationType || config.animationType === 'none') return 1;
   // wave: one full horizontal cycle (2π / step)
   if (config.animationType === 'wave') return Math.ceil((2 * Math.PI) / 0.18);
+  // dither: one full strength sweep
+  if (config.animationType === 'dither') return DITHER_SWEEP_TICKS;
   // glitch: 6 distinct glitch states × 4 ticks each
   return 24;
 }

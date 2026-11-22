@@ -49,7 +49,7 @@ export default function AsciiCanvas({ config, playing }: AsciiCanvasProps) {
         ...cfg,
         imageData: processedImage,
         preprocessing: { ...cfg.preprocessing, showEffect: false },
-      });
+      }, animTick);
 
       drawAsciiFrame(ctx, frame, cfg, animTick);
     },

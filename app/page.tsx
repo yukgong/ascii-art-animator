@@ -434,7 +434,7 @@ export default function BugsAnimatorPage() {
         ...config,
         imageData,
         preprocessing: { ...config.preprocessing, showEffect: false },
-      });
+      }, i);
 
       drawAsciiFrame(ctx, frame, config, i);
 
@@ -519,7 +519,7 @@ export default function BugsAnimatorPage() {
         ...config,
         imageData,
         preprocessing: { ...config.preprocessing, showEffect: false },
-      });
+      }, i);
 
       drawAsciiFrame(ctx, frame, config, i);
 

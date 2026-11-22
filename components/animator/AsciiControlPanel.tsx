@@ -436,8 +436,8 @@ export default function AsciiControlPanel({
                 <Label className="text-xs text-muted-foreground">{tx.animation.effectType}</Label>
                 <InfoTooltip text={tx.animation.effectTypeTip} />
               </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(['none', 'glitch', 'wave'] as AnimationType[]).map((type) => (
+              <div className="grid grid-cols-4 gap-1.5">
+                {(['none', 'glitch', 'wave', 'dither'] as AnimationType[]).map((type) => (
                   <button
                     key={type}
                     onClick={() => updateConfig('animationType', type)}
